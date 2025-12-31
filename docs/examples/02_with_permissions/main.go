@@ -59,7 +59,7 @@ func main() {
 	ctx := context.Background()
 
 	// Configure options with permission callback
-	options := sdk.NewClaudeAgentOptions().
+	options := types.NewClaudeAgentOptions().
 		WithCanUseTool(checkPermission).
 		WithAllowedTools("Bash", "Write", "Read").
 		WithSystemPrompt("You are a helpful assistant. You have access to tools but must ask before using them.")
