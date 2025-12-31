@@ -64,7 +64,9 @@ func main() {
 	// Configure Claude with the MCP server
 	options := types.NewClaudeAgentOptions().
 		WithModel("claude-opus-4-20250514").
-		WithMCPServer("calculator", calculator).
+		WithMcpServers(map[string]interface{}{
+			"calculator": calculator,
+		}).
 		WithSystemPrompt(`You are a helpful calculator assistant. You have access to a calculator tool with two operations:
 - add(a, b): adds two numbers
 - multiply(a, b): multiplies two numbers
