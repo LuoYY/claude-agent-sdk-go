@@ -30,7 +30,7 @@ func main() {
 				a, _ := args["a"].(float64)
 				b, _ := args["b"].(float64)
 				return map[string]any{
-					"result": a + b,
+					"result":    a + b,
 					"operation": "addition",
 				}, nil
 			},
@@ -51,7 +51,7 @@ func main() {
 				a, _ := args["a"].(float64)
 				b, _ := args["b"].(float64)
 				return map[string]any{
-					"result": a * b,
+					"result":    a * b,
 					"operation": "multiplication",
 				}, nil
 			},

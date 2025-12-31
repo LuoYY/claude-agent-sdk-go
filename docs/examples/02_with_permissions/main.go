@@ -22,8 +22,8 @@ func checkPermission(ctx context.Context,
 	input map[string]interface{},
 	permCtx types.ToolPermissionContext) (interface{}, error) {
 	/*
-	Permission callback that controls tool access.
-	Returns PermissionResultAllow or PermissionResultDeny to grant or restrict tool use.
+		Permission callback that controls tool access.
+		Returns PermissionResultAllow or PermissionResultDeny to grant or restrict tool use.
 	*/
 
 	fmt.Printf("🔐 Checking permission for tool: %s\n", toolName)
