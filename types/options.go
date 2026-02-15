@@ -94,7 +94,7 @@ const (
 // Use ThinkingConfigAdaptive(), ThinkingConfigEnabled(), or ThinkingConfigDisabled() to create.
 type ThinkingConfig struct {
 	Type         ThinkingConfigType `json:"type"`
-	BudgetTokens *int              `json:"budget_tokens,omitempty"` // Only used when Type is "enabled"
+	BudgetTokens *int               `json:"budget_tokens,omitempty"` // Only used when Type is "enabled"
 }
 
 // ThinkingConfigAdaptive creates a ThinkingConfig with adaptive thinking (default budget).
@@ -142,13 +142,13 @@ type SandboxIgnoreViolations struct {
 
 // SandboxSettings represents the sandbox configuration for bash commands.
 type SandboxSettings struct {
-	Enabled                    *bool                    `json:"enabled,omitempty"`
-	AutoAllowBashIfSandboxed   *bool                    `json:"autoAllowBashIfSandboxed,omitempty"`
-	ExcludedCommands           []string                 `json:"excludedCommands,omitempty"`
-	AllowUnsandboxedCommands   *bool                    `json:"allowUnsandboxedCommands,omitempty"`
-	Network                    *SandboxNetworkConfig    `json:"network,omitempty"`
-	IgnoreViolations           *SandboxIgnoreViolations `json:"ignoreViolations,omitempty"`
-	EnableWeakerNestedSandbox  *bool                    `json:"enableWeakerNestedSandbox,omitempty"`
+	Enabled                   *bool                    `json:"enabled,omitempty"`
+	AutoAllowBashIfSandboxed  *bool                    `json:"autoAllowBashIfSandboxed,omitempty"`
+	ExcludedCommands          []string                 `json:"excludedCommands,omitempty"`
+	AllowUnsandboxedCommands  *bool                    `json:"allowUnsandboxedCommands,omitempty"`
+	Network                   *SandboxNetworkConfig    `json:"network,omitempty"`
+	IgnoreViolations          *SandboxIgnoreViolations `json:"ignoreViolations,omitempty"`
+	EnableWeakerNestedSandbox *bool                    `json:"enableWeakerNestedSandbox,omitempty"`
 }
 
 // PluginConfig represents a Claude Code plugin configuration.

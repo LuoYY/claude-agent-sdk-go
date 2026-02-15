@@ -173,9 +173,9 @@ type NotificationHookInput struct {
 // PermissionRequestHookInput represents input for PermissionRequest hook events.
 type PermissionRequestHookInput struct {
 	BaseHookInput
-	HookEventName        string                 `json:"hook_event_name"` // "PermissionRequest"
-	ToolName             string                 `json:"tool_name"`
-	ToolInput            map[string]interface{} `json:"tool_input"`
+	HookEventName         string                 `json:"hook_event_name"` // "PermissionRequest"
+	ToolName              string                 `json:"tool_name"`
+	ToolInput             map[string]interface{} `json:"tool_input"`
 	PermissionSuggestions []interface{}          `json:"permission_suggestions,omitempty"`
 }
 
@@ -200,8 +200,8 @@ func (h *PreToolUseHookSpecificOutput) GetHookEventName() string {
 
 // PostToolUseHookSpecificOutput represents hook-specific output for PostToolUse events.
 type PostToolUseHookSpecificOutput struct {
-	HookEventName    string      `json:"hookEventName"` // "PostToolUse"
-	AdditionalContext *string    `json:"additionalContext,omitempty"`
+	HookEventName        string      `json:"hookEventName"` // "PostToolUse"
+	AdditionalContext    *string     `json:"additionalContext,omitempty"`
 	UpdatedMCPToolOutput interface{} `json:"updatedMCPToolOutput,omitempty"`
 }
 
