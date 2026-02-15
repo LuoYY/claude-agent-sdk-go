@@ -81,6 +81,76 @@ type AgentDefinition struct {
 	MaxTurns      *int                   `json:"max_turns,omitempty"`      // Maximum conversation turns for this agent
 }
 
+// ThinkingConfigType represents the type of thinking configuration.
+type ThinkingConfigType string
+
+const (
+	ThinkingConfigTypeAdaptive ThinkingConfigType = "adaptive"
+	ThinkingConfigTypeEnabled  ThinkingConfigType = "enabled"
+	ThinkingConfigTypeDisabled ThinkingConfigType = "disabled"
+)
+
+// ThinkingConfig represents the extended thinking configuration for Claude.
+// Use ThinkingConfigAdaptive(), ThinkingConfigEnabled(), or ThinkingConfigDisabled() to create.
+type ThinkingConfig struct {
+	Type         ThinkingConfigType `json:"type"`
+	BudgetTokens *int              `json:"budget_tokens,omitempty"` // Only used when Type is "enabled"
+}
+
+// ThinkingConfigAdaptive creates a ThinkingConfig with adaptive thinking (default budget).
+func ThinkingConfigAdaptive() *ThinkingConfig {
+	return &ThinkingConfig{Type: ThinkingConfigTypeAdaptive}
+}
+
+// ThinkingConfigEnabled creates a ThinkingConfig with a specific token budget.
+func ThinkingConfigEnabled(budgetTokens int) *ThinkingConfig {
+	return &ThinkingConfig{
+		Type:         ThinkingConfigTypeEnabled,
+		BudgetTokens: &budgetTokens,
+	}
+}
+
+// ThinkingConfigDisabled creates a ThinkingConfig with thinking disabled.
+func ThinkingConfigDisabled() *ThinkingConfig {
+	return &ThinkingConfig{Type: ThinkingConfigTypeDisabled}
+}
+
+// EffortLevel represents the thinking depth level.
+type EffortLevel string
+
+const (
+	EffortLevelLow    EffortLevel = "low"
+	EffortLevelMedium EffortLevel = "medium"
+	EffortLevelHigh   EffortLevel = "high"
+	EffortLevelMax    EffortLevel = "max"
+)
+
+// SandboxNetworkConfig represents network configuration for the sandbox.
+type SandboxNetworkConfig struct {
+	AllowUnixSockets    []string `json:"allowUnixSockets,omitempty"`
+	AllowAllUnixSockets *bool    `json:"allowAllUnixSockets,omitempty"`
+	AllowLocalBinding   *bool    `json:"allowLocalBinding,omitempty"`
+	HTTPProxyPort       *int     `json:"httpProxyPort,omitempty"`
+	SOCKSProxyPort      *int     `json:"socksProxyPort,omitempty"`
+}
+
+// SandboxIgnoreViolations represents violations to ignore in the sandbox.
+type SandboxIgnoreViolations struct {
+	File    []string `json:"file,omitempty"`
+	Network []string `json:"network,omitempty"`
+}
+
+// SandboxSettings represents the sandbox configuration for bash commands.
+type SandboxSettings struct {
+	Enabled                    *bool                    `json:"enabled,omitempty"`
+	AutoAllowBashIfSandboxed   *bool                    `json:"autoAllowBashIfSandboxed,omitempty"`
+	ExcludedCommands           []string                 `json:"excludedCommands,omitempty"`
+	AllowUnsandboxedCommands   *bool                    `json:"allowUnsandboxedCommands,omitempty"`
+	Network                    *SandboxNetworkConfig    `json:"network,omitempty"`
+	IgnoreViolations           *SandboxIgnoreViolations `json:"ignoreViolations,omitempty"`
+	EnableWeakerNestedSandbox  *bool                    `json:"enableWeakerNestedSandbox,omitempty"`
+}
+
 // PluginConfig represents a Claude Code plugin configuration.
 // Currently only local plugins are supported via the 'local' type.
 type PluginConfig struct {
@@ -191,9 +261,23 @@ type ClaudeAgentOptions struct {
 
 	// Model and execution limits
 	Model             *string  `json:"model,omitempty"`
+	FallbackModel     *string  `json:"fallback_model,omitempty"` // Fallback model if primary is unavailable
 	MaxTurns          *int     `json:"max_turns,omitempty"`
-	MaxThinkingTokens *int     `json:"max_thinking_tokens,omitempty"` // Maximum tokens for extended thinking
+	MaxThinkingTokens *int     `json:"max_thinking_tokens,omitempty"` // Deprecated: use Thinking instead
 	MaxBudgetUSD      *float64 `json:"max_budget_usd,omitempty"`      // Maximum budget in USD for this query
+
+	// Extended thinking configuration (supersedes MaxThinkingTokens)
+	Thinking *ThinkingConfig `json:"thinking,omitempty"`
+	Effort   *EffortLevel    `json:"effort,omitempty"` // Thinking depth: "low", "medium", "high", "max"
+
+	// Structured output configuration
+	OutputFormat map[string]interface{} `json:"output_format,omitempty"` // JSON schema for structured output
+
+	// File checkpointing
+	EnableFileCheckpointing bool `json:"enable_file_checkpointing,omitempty"` // Track file changes for rewinding
+
+	// Sandbox configuration
+	Sandbox *SandboxSettings `json:"sandbox,omitempty"`
 
 	// Beta features
 	Betas []string `json:"betas,omitempty"` // List of beta feature flags (e.g., "context-1m-2025-08-07")
@@ -342,9 +426,67 @@ func (o *ClaudeAgentOptions) WithMaxTurns(maxTurns int) *ClaudeAgentOptions {
 }
 
 // WithMaxThinkingTokens sets the maximum tokens for extended thinking.
-// This limits how many tokens Claude can use for internal reasoning before responding.
+// Deprecated: Use WithThinking() instead for more flexible configuration.
 func (o *ClaudeAgentOptions) WithMaxThinkingTokens(maxTokens int) *ClaudeAgentOptions {
 	o.MaxThinkingTokens = &maxTokens
+	return o
+}
+
+// WithThinking sets the extended thinking configuration.
+// This supersedes MaxThinkingTokens and provides more control over thinking behavior.
+//
+// Example:
+//
+//	opts.WithThinking(types.ThinkingConfigAdaptive())
+//	opts.WithThinking(types.ThinkingConfigEnabled(5000))
+//	opts.WithThinking(types.ThinkingConfigDisabled())
+func (o *ClaudeAgentOptions) WithThinking(config *ThinkingConfig) *ClaudeAgentOptions {
+	o.Thinking = config
+	return o
+}
+
+// WithEffort sets the thinking depth level.
+// Controls how deeply Claude reasons before responding.
+func (o *ClaudeAgentOptions) WithEffort(effort EffortLevel) *ClaudeAgentOptions {
+	o.Effort = &effort
+	return o
+}
+
+// WithFallbackModel sets the fallback model to use if the primary model is unavailable.
+func (o *ClaudeAgentOptions) WithFallbackModel(model string) *ClaudeAgentOptions {
+	o.FallbackModel = &model
+	return o
+}
+
+// WithOutputFormat sets the structured output format using a JSON schema.
+// The output will be validated against this schema and available in ResultMessage.StructuredOutput.
+//
+// Example:
+//
+//	opts.WithOutputFormat(map[string]interface{}{
+//	    "type": "json_schema",
+//	    "schema": map[string]interface{}{
+//	        "type": "object",
+//	        "properties": map[string]interface{}{
+//	            "name": map[string]interface{}{"type": "string"},
+//	        },
+//	    },
+//	})
+func (o *ClaudeAgentOptions) WithOutputFormat(format map[string]interface{}) *ClaudeAgentOptions {
+	o.OutputFormat = format
+	return o
+}
+
+// WithEnableFileCheckpointing enables file change tracking for rewinding.
+// When enabled, you can use Client.RewindFiles() to revert file changes.
+func (o *ClaudeAgentOptions) WithEnableFileCheckpointing(enable bool) *ClaudeAgentOptions {
+	o.EnableFileCheckpointing = enable
+	return o
+}
+
+// WithSandbox sets the sandbox configuration for bash command execution.
+func (o *ClaudeAgentOptions) WithSandbox(sandbox *SandboxSettings) *ClaudeAgentOptions {
+	o.Sandbox = sandbox
 	return o
 }
 

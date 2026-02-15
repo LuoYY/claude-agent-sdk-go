@@ -311,6 +311,24 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting empty system prompt (no options)")
 	}
 
+	// Add allowed tools if specified
+	if t.options != nil && len(t.options.AllowedTools) > 0 {
+		args = append(args, "--allowedTools", joinStrings(t.options.AllowedTools, ","))
+		t.logger.Debug("Setting allowed tools: %v", t.options.AllowedTools)
+	}
+
+	// Add disallowed tools if specified
+	if t.options != nil && len(t.options.DisallowedTools) > 0 {
+		args = append(args, "--disallowedTools", joinStrings(t.options.DisallowedTools, ","))
+		t.logger.Debug("Setting disallowed tools: %v", t.options.DisallowedTools)
+	}
+
+	// Add max turns if specified
+	if t.options != nil && t.options.MaxTurns != nil {
+		args = append(args, "--max-turns", fmt.Sprintf("%d", *t.options.MaxTurns))
+		t.logger.Debug("Setting max turns: %d", *t.options.MaxTurns)
+	}
+
 	// Add model if specified
 	if t.options != nil && t.options.Model != nil {
 		args = append(args, "--model", *t.options.Model)
@@ -344,10 +362,53 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		}
 	}
 
-	// Add extended thinking token limit if specified
-	if t.options != nil && t.options.MaxThinkingTokens != nil {
+	// Add thinking configuration (new ThinkingConfig takes precedence over deprecated MaxThinkingTokens)
+	if t.options != nil && t.options.Thinking != nil {
+		thinkingJSON, err := json.Marshal(t.options.Thinking)
+		if err == nil {
+			args = append(args, "--thinking", string(thinkingJSON))
+			t.logger.Debug("Setting thinking config: %s", string(thinkingJSON))
+		}
+	} else if t.options != nil && t.options.MaxThinkingTokens != nil {
+		// Deprecated: use Thinking instead
 		args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", *t.options.MaxThinkingTokens))
-		t.logger.Debug("Setting max thinking tokens: %d", *t.options.MaxThinkingTokens)
+		t.logger.Debug("Setting max thinking tokens (deprecated): %d", *t.options.MaxThinkingTokens)
+	}
+
+	// Add effort level if specified
+	if t.options != nil && t.options.Effort != nil {
+		args = append(args, "--effort", string(*t.options.Effort))
+		t.logger.Debug("Setting effort level: %s", string(*t.options.Effort))
+	}
+
+	// Add fallback model if specified
+	if t.options != nil && t.options.FallbackModel != nil {
+		args = append(args, "--fallback-model", *t.options.FallbackModel)
+		t.logger.Debug("Setting fallback model: %s", *t.options.FallbackModel)
+	}
+
+	// Add structured output format if specified
+	if t.options != nil && t.options.OutputFormat != nil {
+		outputJSON, err := json.Marshal(t.options.OutputFormat)
+		if err == nil {
+			args = append(args, "--output-format", string(outputJSON))
+			t.logger.Debug("Setting output format: %s", string(outputJSON))
+		}
+	}
+
+	// Add file checkpointing if enabled
+	if t.options != nil && t.options.EnableFileCheckpointing {
+		args = append(args, "--enable-file-checkpointing")
+		t.logger.Debug("File checkpointing enabled")
+	}
+
+	// Add sandbox configuration if specified
+	if t.options != nil && t.options.Sandbox != nil {
+		sandboxJSON, err := json.Marshal(t.options.Sandbox)
+		if err == nil {
+			args = append(args, "--sandbox", string(sandboxJSON))
+			t.logger.Debug("Setting sandbox config: %s", string(sandboxJSON))
+		}
 	}
 
 	// Add budget limit if specified
@@ -447,6 +508,26 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 				args = append(args, "--subagent-execution", string(subagentJSONBytes))
 				t.logger.Debug("Subagent execution configuration: %s", string(subagentJSONBytes))
 			}
+		}
+	}
+
+	// Add extra CLI arguments
+	if t.options != nil && len(t.options.ExtraArgs) > 0 {
+		for key, value := range t.options.ExtraArgs {
+			if value != nil {
+				args = append(args, "--"+key, *value)
+			} else {
+				args = append(args, "--"+key)
+			}
+			t.logger.Debug("Adding extra arg: --%s", key)
+		}
+	}
+
+	// Add add-dirs if specified
+	if t.options != nil && len(t.options.AddDirs) > 0 {
+		for _, dir := range t.options.AddDirs {
+			args = append(args, "--add-dir", dir)
+			t.logger.Debug("Adding directory: %s", dir)
 		}
 	}
 

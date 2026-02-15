@@ -230,19 +230,34 @@ func TestSDKMCPServer_HandleListTools(t *testing.T) {
 		t.Fatalf("expected 2 tools, got %d", len(tools))
 	}
 
-	// Check first tool
-	if tools[0]["name"] != "add" || tools[0]["description"] != "Add numbers" {
-		t.Fatal("first tool mismatch")
+	// Build a map of tools by name for order-independent checking
+	toolsByName := make(map[string]map[string]interface{})
+	for _, tool := range tools {
+		name, _ := tool["name"].(string)
+		toolsByName[name] = tool
 	}
-	if tools[0]["inputSchema"] == nil {
+
+	// Check "add" tool
+	addTool, ok := toolsByName["add"]
+	if !ok {
+		t.Fatal("missing 'add' tool")
+	}
+	if addTool["description"] != "Add numbers" {
+		t.Fatal("add tool description mismatch")
+	}
+	if addTool["inputSchema"] == nil {
 		t.Fatal("expected inputSchema for add tool")
 	}
 
-	// Check second tool
-	if tools[1]["name"] != "multiply" || tools[1]["description"] != "Multiply numbers" {
-		t.Fatal("second tool mismatch")
+	// Check "multiply" tool
+	multiplyTool, ok := toolsByName["multiply"]
+	if !ok {
+		t.Fatal("missing 'multiply' tool")
 	}
-	if tools[1]["inputSchema"] != nil {
+	if multiplyTool["description"] != "Multiply numbers" {
+		t.Fatal("multiply tool description mismatch")
+	}
+	if multiplyTool["inputSchema"] != nil {
 		t.Fatal("unexpected inputSchema for multiply tool")
 	}
 }

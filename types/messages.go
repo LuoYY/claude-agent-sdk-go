@@ -129,9 +129,11 @@ type Message interface {
 
 // UserMessage represents a message from the user.
 type UserMessage struct {
-	Type            string      `json:"type"`
-	Content         interface{} `json:"content"` // Can be string or []ContentBlock
-	ParentToolUseID *string     `json:"parent_tool_use_id,omitempty"`
+	Type            string                 `json:"type"`
+	UUID            *string                `json:"uuid,omitempty"`
+	Content         interface{}            `json:"content"` // Can be string or []ContentBlock
+	ParentToolUseID *string                `json:"parent_tool_use_id,omitempty"`
+	ToolUseResult   map[string]interface{} `json:"tool_use_result,omitempty"` // Tool use result data
 }
 
 // GetMessageType returns the type of the message.
@@ -212,12 +214,19 @@ func (m *UserMessage) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("content must be string or array of content blocks")
 }
 
+// AssistantMessageError represents an error that occurred during assistant message generation.
+type AssistantMessageError struct {
+	Type    string `json:"type,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 // AssistantMessage represents a message from Claude assistant.
 type AssistantMessage struct {
-	Type            string         `json:"type"`
-	Content         []ContentBlock `json:"content"`
-	Model           string         `json:"model"`
-	ParentToolUseID *string        `json:"parent_tool_use_id,omitempty"`
+	Type            string                 `json:"type"`
+	Content         []ContentBlock         `json:"content"`
+	Model           string                 `json:"model"`
+	ParentToolUseID *string                `json:"parent_tool_use_id,omitempty"`
+	Error           *AssistantMessageError `json:"error,omitempty"`
 }
 
 // GetMessageType returns the type of the message.
@@ -238,6 +247,7 @@ func (m *AssistantMessage) UnmarshalJSON(data []byte) error {
 	aux := &struct {
 		Content []json.RawMessage          `json:"content"`
 		Message map[string]json.RawMessage `json:"message"` // Handle nested message format from CLI
+		Error   json.RawMessage            `json:"error"`
 		*Alias
 	}{
 		Alias: (*Alias)(m),
@@ -279,6 +289,14 @@ func (m *AssistantMessage) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		m.Content[i] = block
+	}
+
+	// Parse error field if present
+	if aux.Error != nil && string(aux.Error) != "null" {
+		var assistantErr AssistantMessageError
+		if err := json.Unmarshal(aux.Error, &assistantErr); err == nil {
+			m.Error = &assistantErr
+		}
 	}
 
 	return nil
@@ -344,16 +362,17 @@ func (m *SystemMessage) ShouldDisplayToUser() bool {
 
 // ResultMessage represents a result message with cost and usage information.
 type ResultMessage struct {
-	Type          string                 `json:"type"`
-	Subtype       string                 `json:"subtype"`
-	DurationMs    int                    `json:"duration_ms"`
-	DurationAPIMs int                    `json:"duration_api_ms"`
-	IsError       bool                   `json:"is_error"`
-	NumTurns      int                    `json:"num_turns"`
-	SessionID     string                 `json:"session_id"`
-	TotalCostUSD  *float64               `json:"total_cost_usd,omitempty"`
-	Usage         map[string]interface{} `json:"usage,omitempty"`
-	Result        *string                `json:"result,omitempty"`
+	Type             string                 `json:"type"`
+	Subtype          string                 `json:"subtype"`
+	DurationMs       int                    `json:"duration_ms"`
+	DurationAPIMs    int                    `json:"duration_api_ms"`
+	IsError          bool                   `json:"is_error"`
+	NumTurns         int                    `json:"num_turns"`
+	SessionID        string                 `json:"session_id"`
+	TotalCostUSD     *float64               `json:"total_cost_usd,omitempty"`
+	Usage            map[string]interface{} `json:"usage,omitempty"`
+	Result           *string                `json:"result,omitempty"`
+	StructuredOutput interface{}            `json:"structured_output,omitempty"` // Structured output from output_format
 }
 
 // GetMessageType returns the type of the message.

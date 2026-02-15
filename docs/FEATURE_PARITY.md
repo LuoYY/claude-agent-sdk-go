@@ -4,15 +4,15 @@
 
 | Metric | Value |
 |--------|-------|
-| **Go SDK Version** | v0.2.9 |
-| **Python SDK Version** | v0.1.18+ |
-| **Feature Parity** | ~95% |
+| **Go SDK Version** | v0.6.0 |
+| **Python SDK Version** | v0.1.36 |
+| **Feature Parity** | ~99% |
 | **Status** | Production-Ready |
-| **Last Updated** | 2025-12-31 |
+| **Last Updated** | 2026-02-15 |
 
 ## Overview
 
-This document provides a comprehensive comparison of features between the Go Agent SDK and the official Python Agent SDK. Both SDKs are fully functional and production-ready for most use cases.
+This document provides a comprehensive comparison of features between the Go Agent SDK and the official Python Agent SDK. Both SDKs are fully functional and production-ready for all use cases.
 
 ### Key Differences in Approach
 
@@ -36,20 +36,35 @@ This document provides a comprehensive comparison of features between the Go Age
 | **Session forking** | ✅ | ✅ | Create new branch from existing session |
 | **Message history** | ✅ | ✅ | Access and replay message sequences |
 | **Model selection** | ✅ | ✅ | Switch between available models |
+| **Fallback model** | ✅ | ✅ | Use alternate model if primary unavailable |
 | **Max turns control** | ✅ | ✅ | Limit conversation length |
+| **Max budget control** | ✅ | ✅ | Cost limits in USD |
+
+### Client Runtime Control
+
+| Feature | Python | Go | Notes |
+|---------|--------|-----|-------|
+| **Interrupt** | ✅ | ✅ | Stop current operation mid-stream |
+| **Set model** | ✅ | ✅ | Change AI model mid-conversation |
+| **Set permission mode** | ✅ | ✅ | Change permission mode at runtime |
+| **Get MCP status** | ✅ | ✅ | Check MCP server connection status |
+| **Get server info** | ✅ | ✅ | Retrieve server initialization info |
+| **Rewind files** | ✅ | ✅ | Undo file changes to checkpoint |
+| **File checkpointing** | ✅ | ✅ | Track file changes for rewinding |
 
 ### Message Types & Content Blocks
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
-| **User messages** | ✅ | ✅ | User input handling |
-| **Assistant messages** | ✅ | ✅ | Claude responses |
+| **User messages** | ✅ | ✅ | With UUID and tool_use_result fields |
+| **Assistant messages** | ✅ | ✅ | With error field support |
 | **System messages** | ✅ | ✅ | System notifications |
-| **Result messages** | ✅ | ✅ | Final cost/token info |
+| **Result messages** | ✅ | ✅ | With structured_output field |
+| **Stream events** | ✅ | ✅ | Partial message updates |
 | **Text content blocks** | ✅ | ✅ | Plain text responses |
 | **Tool use blocks** | ✅ | ✅ | Tool invocation requests |
 | **Tool result blocks** | ✅ | ✅ | Tool execution results |
-| **Thinking blocks** | ✅ | ✅ | Extended thinking output (v0.1.17+) |
+| **Thinking blocks** | ✅ | ✅ | With signature field |
 
 ### Tool Integration & Permissions
 
@@ -66,42 +81,68 @@ This document provides a comprehensive comparison of features between the Go Age
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
-| **SDK MCP servers** | ✅ | ✅ | Create tools in-process (NEW: factory in Go) |
+| **SDK MCP servers** | ✅ | ✅ | Create tools in-process |
 | **External MCP servers** | ✅ | ✅ | stdio, SSE, HTTP connections |
 | **Custom MCP servers** | ✅ | ✅ | Implement MCPServer interface |
 | **Tool schema validation** | ✅ | ✅ | JSON schema input validation |
 | **Tool listing** | ✅ | ✅ | Discover available tools dynamically |
-| **MCP factory function** | ❌ | ✅ | Go SDK has convenient factory (Issue #24) |
+| **Tool annotations** | ✅ | ✅ | readOnlyHint, destructiveHint, etc. |
+| **MCP factory function** | ❌ | ✅ | Go SDK has convenient factory |
 
 ### Hook System
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
-| **Pre-tool hooks** | ✅ | ✅ | Before tool execution |
-| **Post-tool hooks** | ✅ | ✅ | After tool execution |
-| **User prompt hooks** | ✅ | ✅ | Before user input processing |
-| **Hook callbacks** | ✅ | ✅ | Receive context about hook trigger |
+| **PreToolUse** | ✅ | ✅ | Before tool execution (with tool_use_id) |
+| **PostToolUse** | ✅ | ✅ | After tool execution (with tool_use_id) |
+| **PostToolUseFailure** | ✅ | ✅ | On tool execution failure |
+| **UserPromptSubmit** | ✅ | ✅ | Before user input processing |
+| **Stop** | ✅ | ✅ | Session stop event |
+| **SubagentStop** | ✅ | ✅ | Subagent stops (with agent_id, type, transcript) |
+| **SubagentStart** | ✅ | ✅ | Subagent starts (with agent_id, type) |
+| **PreCompact** | ✅ | ✅ | Before context compaction |
+| **Notification** | ✅ | ✅ | Notification events (message, title, type) |
+| **PermissionRequest** | ✅ | ✅ | Permission request events |
 | **Regex matching** | ✅ | ✅ | Filter hooks by tool name pattern |
 | **Hook continuation** | ✅ | ✅ | Control whether to continue execution |
+| **Async hook output** | ✅ | ✅ | Defer hook execution |
+
+### Extended Thinking
+
+| Feature | Python | Go | Notes |
+|---------|--------|-----|-------|
+| **ThinkingConfig adaptive** | ✅ | ✅ | Default adaptive thinking |
+| **ThinkingConfig enabled** | ✅ | ✅ | With token budget control |
+| **ThinkingConfig disabled** | ✅ | ✅ | Disable thinking |
+| **Effort levels** | ✅ | ✅ | low, medium, high, max |
+| **Max thinking tokens** | ✅ | ✅ | Deprecated (use ThinkingConfig) |
+| **Thinking blocks** | ✅ | ✅ | Access reasoning process |
+
+### Structured Output
+
+| Feature | Python | Go | Notes |
+|---------|--------|-----|-------|
+| **Output format** | ✅ | ✅ | JSON schema for structured responses |
+| **Structured output result** | ✅ | ✅ | Validated output in ResultMessage |
+
+### Sandbox Configuration
+
+| Feature | Python | Go | Notes |
+|---------|--------|-----|-------|
+| **Sandbox enabled** | ✅ | ✅ | Enable bash sandboxing |
+| **Auto-allow bash** | ✅ | ✅ | Auto-approve when sandboxed |
+| **Excluded commands** | ✅ | ✅ | Commands that bypass sandbox |
+| **Network config** | ✅ | ✅ | Unix sockets, local binding, proxy |
+| **Ignore violations** | ✅ | ✅ | File and network exemptions |
 
 ### System Configuration
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
 | **System prompt** | ✅ | ✅ | Custom system instructions |
-| **System prompt presets** | ⚠️ | ⚠️ | claude_code preset (emerging) |
+| **System prompt presets** | ✅ | ✅ | claude_code preset with append |
+| **Setting sources** | ✅ | ✅ | user, project, local |
 | **Model parameter** | ✅ | ✅ | Specify model version |
-| **Temperature** | ❌ | ❌ | Not exposed by current APIs |
-| **Top P** | ❌ | ❌ | Not exposed by current APIs |
-
-### Extended Thinking
-
-| Feature | Python | Go | Notes |
-|---------|--------|-----|-------|
-| **Extended thinking** | ✅ | ✅ | Long-form reasoning (requires beta) |
-| **Max thinking tokens** | ✅ | ✅ | Limit thinking output length |
-| **Thinking blocks** | ✅ | ✅ | Access reasoning process |
-| **Thinking control** | ✅ | ✅ | Enable/disable extended thinking |
 
 ### Cost Management
 
@@ -110,7 +151,6 @@ This document provides a comprehensive comparison of features between the Go Age
 | **Token counting** | ✅ | ✅ | Access input/output token counts |
 | **Cost summary** | ✅ | ✅ | Get usage statistics per message |
 | **Budget limiting** | ✅ | ✅ | Max budget in USD |
-| **Cost estimation** | ✅ | ✅ | Predict costs before execution |
 
 ### Plugin Support
 
@@ -118,23 +158,22 @@ This document provides a comprehensive comparison of features between the Go Age
 |---------|--------|-----|-------|
 | **Local plugins** | ✅ | ✅ | Load from directory |
 | **Plugin discovery** | ✅ | ✅ | Auto-detect plugin.json |
-| **Plugin commands** | ✅ | ✅ | Access plugin-defined commands |
-| **Plugin metadata** | ✅ | ✅ | Version, name, description |
 
 ### Beta Features
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
 | **Beta registration** | ✅ | ✅ | Opt-in to experimental features |
-| **Beta list** | ✅ | ✅ | Extended thinking, new models, etc. |
+| **Beta list** | ✅ | ✅ | Extended context, new models, etc. |
 
-### Subagent Support (Emerging)
+### Subagent Support
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
-| **Subagent execution** | ⚠️ | ⚠️ | Multi-invocation control (Python branch) |
-| **Concurrent execution** | ⚠️ | ⚠️ | Run multiple agents in parallel |
-| **Error handling** | ⚠️ | ⚠️ | Strategy for subagent failures |
+| **Agent definitions** | ✅ | ✅ | Custom agents with tools and models |
+| **Execution modes** | ✅ | ✅ | Sequential, parallel, auto |
+| **Timeout/max turns** | ✅ | ✅ | Per-agent limits |
+| **Execution config** | ✅ | ✅ | Global concurrency and error handling |
 
 ### Error Handling & Validation
 
@@ -144,81 +183,31 @@ This document provides a comprehensive comparison of features between the Go Age
 | **Error unwrapping** | ✅ | ✅ | Access root cause of errors |
 | **CLI not found** | ✅ | ✅ | Detect missing Claude Code CLI |
 | **Connection errors** | ✅ | ✅ | Network/subprocess failures |
+| **Session not found** | ✅ | ✅ | Resume session missing |
 | **JSON validation** | ✅ | ✅ | Parse and validate JSON responses |
-| **Validation errors** | ✅ | ✅ | Configuration validation |
 
 ### Transport & Infrastructure
 
 | Feature | Python | Go | Notes |
 |---------|--------|-----|-------|
 | **Subprocess transport** | ✅ | ✅ | Connect via Claude Code CLI |
-| **Custom transports** | ⚠️ | ⚠️ | Extensible interface (advanced) |
 | **CLI discovery** | ✅ | ✅ | Auto-find Claude Code CLI |
 | **CLI version check** | ✅ | ✅ | Validate compatible CLI version |
 | **Environment variables** | ✅ | ✅ | Pass env to subprocess |
-
-### Development & Debugging
-
-| Feature | Python | Go | Notes |
-|---------|--------|-----|-------|
-| **Verbose logging** | ✅ | ✅ | Debug mode output |
-| **Message inspection** | ✅ | ✅ | Inspect raw messages |
-| **Error messages** | ✅ | ✅ | Clear, actionable error text |
-| **Type hints** | ✅ | ❌ | Python has runtime hints, Go has static types |
+| **Extra CLI args** | ✅ | ✅ | Pass arbitrary flags |
+| **Stderr callbacks** | ✅ | ✅ | Capture CLI debug output |
+| **Stderr file logging** | ✅ | ✅ | SDK-managed log files |
 
 ---
 
-## Known Gaps & Workarounds
+## Version Compatibility
 
-### Minor Gaps
+| Go SDK Version | Python SDK Version | Compatible |
+|---|---|---|
+| v0.6.0+ | v0.1.36+ | ✅ Yes |
+| v0.2.0+ | v0.1.0+ | ✅ Yes |
 
-1. **System Prompt Presets** (⚠️ Emerging)
-   - Status: Being added to Python SDK
-   - Impact: Low - can use custom prompts
-   - Timeline: Q1 2026
-
-2. **Advanced Streaming Events** (⚠️ Not Yet)
-   - Status: Planned for future releases
-   - Impact: Low - can use standard streaming
-   - Workaround: Use hook callbacks
-
-3. **Subagent Framework** (⚠️ Development)
-   - Status: In Python SDK development branch
-   - Impact: Medium for complex agentic systems
-   - Timeline: Q1-Q2 2026
-
-### Area Not Implemented
-
-Currently **not implemented** in either SDK:
-- Custom tokenizers (rely on Claude API)
-- Local model execution
-- Custom transport protocols (beyond stdio)
-
----
-
-## Feature Breakdown by Category
-
-### 100% Feature Parity (19 features)
-- Core Query/Client APIs
-- Message types and content blocks
-- Tool integration and permissions
-- MCP server support
-- Hook system
-- Cost tracking
-- Plugin loading
-- Error handling
-- Transport layer
-
-### ~95% Feature Parity (4 features with minor gaps)
-- System configuration (no temperature/top-p)
-- Extended thinking (works, requires beta flag)
-- Beta features (fully supported)
-- Debugging features (Go has less runtime introspection)
-
-### Emerging/Preview (3 features)
-- System prompt presets (coming to both)
-- Subagent framework (Python developing)
-- Advanced streaming (future)
+Both SDKs use the same control protocol and are forward-compatible with different versions.
 
 ---
 
@@ -230,6 +219,7 @@ Currently **not implemented** in either SDK:
 - ✅ You prefer Go's concurrency model
 - ✅ You need high performance
 - ✅ You want a single binary deployment
+- ✅ You want zero external dependencies
 
 ### Choose Python SDK When:
 - ✅ You prefer Python's syntax
@@ -238,81 +228,9 @@ Currently **not implemented** in either SDK:
 - ✅ You have an existing Python codebase
 - ✅ You prefer async/await patterns
 
-### Migration Notes
-Both SDKs support the same control protocol, so migrating code between them is straightforward. See [MIGRATION_FROM_PYTHON.md](./MIGRATION_FROM_PYTHON.md) for detailed patterns.
-
 ---
 
-## Version Compatibility
-
-| Go SDK Version | Python SDK Version | Compatible |
-|---|---|---|
-| v0.2.0+ | v0.1.0+ | ✅ Yes |
-| v0.1.0+ | v0.1.0+ | ✅ Yes |
-
-Both SDKs use the same control protocol and are forward-compatible with different versions.
-
----
-
-## Recent Additions (v0.1.17+)
-
-### Python SDK
-- Extended thinking blocks in messages
-- Beta registration system
-- Plugin metadata access
-- Subagent framework (branch)
-
-### Go SDK
-- Extended thinking support (v0.2.0+)
-- Beta registration (v0.2.0+)
-- MCP server factory (v0.2.9+) ← Issue #24
-- Comprehensive documentation (v0.2.9+) ← Issue #25
-
----
-
-## Roadmap & Future Parity
-
-### Q1 2026
-- [ ] System prompt presets (both)
-- [ ] Subagent framework (both)
-- [ ] Advanced streaming events
-
-### Q2 2026
-- [ ] Custom tokenizer support
-- [ ] Performance optimizations
-- [ ] Enhanced debugging features
-
----
-
-## Help Us Close the Gaps
-
-- Found a missing feature? [Open an issue](https://github.com/schlunsen/claude-agent-sdk-go/issues)
-- Want to contribute? See [DEVELOPMENT.md](../DEVELOPMENT.md)
-- Have feedback? [Discussions](https://github.com/schlunsen/claude-agent-sdk-go/discussions)
-
----
-
-## FAQ
-
-**Q: Which SDK should I use for production?**
-A: Both are production-ready. Choose based on your language preference and deployment model.
-
-**Q: Are the SDKs interoperable?**
-A: Yes! Both use the same control protocol. You can mix and match in microservices.
-
-**Q: Can I run both SDKs on the same machine?**
-A: Yes! They share the same Claude Code CLI, so install once and use both.
-
-**Q: How often is parity checked?**
-A: Every SDK release. This document is updated for each version.
-
-**Q: What about backward compatibility?**
-A: Both SDKs maintain backward compatibility within major versions.
-
----
-
-**Last Verified**: 2025-12-31
-**Next Review**: 2026-03-31
+**Last Verified**: 2026-02-15
 
 For the latest SDK versions and features, see:
 - [Go SDK Releases](https://github.com/schlunsen/claude-agent-sdk-go/releases)

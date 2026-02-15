@@ -9,6 +9,19 @@ import (
 // It receives the context and tool arguments, and returns the tool result or an error.
 type ToolHandler func(ctx context.Context, args map[string]any) (any, error)
 
+// ToolAnnotations represents metadata hints for a tool's behavior.
+// These annotations help Claude Code understand how to handle the tool safely.
+type ToolAnnotations struct {
+	// ReadOnlyHint indicates the tool only reads data and has no side effects.
+	ReadOnlyHint *bool `json:"readOnlyHint,omitempty"`
+	// DestructiveHint indicates the tool may modify or delete data.
+	DestructiveHint *bool `json:"destructiveHint,omitempty"`
+	// IdempotentHint indicates the tool is safe to retry (same input → same result).
+	IdempotentHint *bool `json:"idempotentHint,omitempty"`
+	// OpenWorldHint indicates the tool interacts with external systems/APIs.
+	OpenWorldHint *bool `json:"openWorldHint,omitempty"`
+}
+
 // Tool represents an MCP tool that can be called by Claude.
 // This is used with the MCP server factory to simplify tool registration.
 type Tool struct {
@@ -33,6 +46,10 @@ type Tool struct {
 	//    "required": []string{"name"},
 	//  }
 	InputSchema map[string]interface{}
+
+	// Annotations provides optional metadata hints about the tool's behavior.
+	// These help Claude Code understand how to handle the tool safely.
+	Annotations *ToolAnnotations
 
 	// Handler is the function that executes when Claude calls this tool.
 	// It receives the tool arguments and should return either:
@@ -106,6 +123,25 @@ func (s *SDKMCPServer) handleListTools(message map[string]interface{}) (map[stri
 
 		if tool.InputSchema != nil {
 			toolMap["inputSchema"] = tool.InputSchema
+		}
+
+		if tool.Annotations != nil {
+			annotations := make(map[string]interface{})
+			if tool.Annotations.ReadOnlyHint != nil {
+				annotations["readOnlyHint"] = *tool.Annotations.ReadOnlyHint
+			}
+			if tool.Annotations.DestructiveHint != nil {
+				annotations["destructiveHint"] = *tool.Annotations.DestructiveHint
+			}
+			if tool.Annotations.IdempotentHint != nil {
+				annotations["idempotentHint"] = *tool.Annotations.IdempotentHint
+			}
+			if tool.Annotations.OpenWorldHint != nil {
+				annotations["openWorldHint"] = *tool.Annotations.OpenWorldHint
+			}
+			if len(annotations) > 0 {
+				toolMap["annotations"] = annotations
+			}
 		}
 
 		tools = append(tools, toolMap)

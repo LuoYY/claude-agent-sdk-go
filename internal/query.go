@@ -546,6 +546,12 @@ func (q *Query) handleMCPMessage(requestData map[string]interface{}) (map[string
 	}, nil
 }
 
+// SendControlRequest sends a control request to CLI and waits for response.
+// This is exported so the Client can use it for runtime control methods.
+func (q *Query) SendControlRequest(ctx context.Context, request map[string]interface{}) (map[string]interface{}, error) {
+	return q.sendControlRequest(ctx, request)
+}
+
 // sendControlRequest sends a control request to CLI and waits for response.
 func (q *Query) sendControlRequest(ctx context.Context, request map[string]interface{}) (map[string]interface{}, error) {
 	if !q.isStreamingMode {

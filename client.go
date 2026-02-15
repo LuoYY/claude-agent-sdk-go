@@ -508,3 +508,156 @@ func (c *Client) IsConnected() bool {
 	defer c.mu.Unlock()
 	return c.connected
 }
+
+// Interrupt sends an interrupt signal to Claude, stopping the current operation.
+//
+// This is useful for interactive applications where the user wants to cancel
+// a long-running operation. The interrupt is sent as a control request and
+// acknowledged by the CLI.
+//
+// Returns an error if not connected or the interrupt fails.
+func (c *Client) Interrupt(ctx context.Context) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	query := c.query
+	c.mu.Unlock()
+
+	_, err := query.SendControlRequest(ctx, map[string]interface{}{
+		"subtype": "interrupt",
+	})
+	return err
+}
+
+// SetModel changes the AI model during an active conversation.
+//
+// This sends a control request to the CLI to switch models mid-session.
+// Useful for dynamic model selection based on task complexity.
+//
+// Parameters:
+//   - model: The model identifier (e.g., "claude-sonnet-4-5", "claude-opus-4-1-20250805")
+//     Pass empty string to reset to the default model.
+//
+// Returns an error if not connected or the model change fails.
+func (c *Client) SetModel(ctx context.Context, model string) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	query := c.query
+	c.mu.Unlock()
+
+	request := map[string]interface{}{
+		"subtype": "set_model",
+	}
+	if model != "" {
+		request["model"] = model
+	}
+
+	_, err := query.SendControlRequest(ctx, request)
+	return err
+}
+
+// SetPermissionMode changes the permission mode during an active conversation.
+//
+// This allows dynamically adjusting how Claude handles tool permissions:
+//   - "default": Ask for permission on each tool use
+//   - "acceptEdits": Auto-approve file edits
+//   - "plan": Read-only mode (no modifications)
+//   - "bypassPermissions": Skip all permission checks (dangerous)
+//
+// Returns an error if not connected or the mode change fails.
+func (c *Client) SetPermissionMode(ctx context.Context, mode types.PermissionMode) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	query := c.query
+	c.mu.Unlock()
+
+	_, err := query.SendControlRequest(ctx, map[string]interface{}{
+		"subtype": "set_permission_mode",
+		"mode":    string(mode),
+	})
+	return err
+}
+
+// GetMCPStatus returns the current MCP server connection status.
+//
+// The returned map contains an "mcpServers" key with a list of server statuses.
+// Each server status includes:
+//   - "name": Server name (string)
+//   - "status": Connection status ("connected", "pending", "failed", "needs-auth", "disabled")
+//
+// Returns an error if not connected or the status check fails.
+func (c *Client) GetMCPStatus(ctx context.Context) (map[string]interface{}, error) {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return nil, types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	query := c.query
+	c.mu.Unlock()
+
+	return query.SendControlRequest(ctx, map[string]interface{}{
+		"subtype": "get_mcp_status",
+	})
+}
+
+// GetServerInfo returns server initialization information.
+//
+// This includes available commands, current output style, and server capabilities.
+// Returns nil if the server info is not available.
+//
+// Returns an error if not connected.
+func (c *Client) GetServerInfo(ctx context.Context) (map[string]interface{}, error) {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return nil, types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	query := c.query
+	c.mu.Unlock()
+
+	return query.SendControlRequest(ctx, map[string]interface{}{
+		"subtype": "get_server_info",
+	})
+}
+
+// RewindFiles rewinds tracked files to their state at a specific user message.
+//
+// This requires EnableFileCheckpointing to be set to true in ClaudeAgentOptions.
+// The userMessageID should be the UUID from a UserMessage received during the session.
+//
+// Parameters:
+//   - userMessageID: The UUID of the user message to rewind to
+//
+// Returns an error if not connected, file checkpointing is not enabled,
+// or the rewind operation fails.
+func (c *Client) RewindFiles(ctx context.Context, userMessageID string) error {
+	c.mu.Lock()
+	if !c.connected || c.query == nil {
+		c.mu.Unlock()
+		return types.NewCLIConnectionError("not connected - call Connect() first")
+	}
+	if !c.options.EnableFileCheckpointing {
+		c.mu.Unlock()
+		return fmt.Errorf("file checkpointing is not enabled - set EnableFileCheckpointing to true in options")
+	}
+	query := c.query
+	c.mu.Unlock()
+
+	if userMessageID == "" {
+		return fmt.Errorf("userMessageID cannot be empty")
+	}
+
+	_, err := query.SendControlRequest(ctx, map[string]interface{}{
+		"subtype":         "rewind_files",
+		"user_message_id": userMessageID,
+	})
+	return err
+}
