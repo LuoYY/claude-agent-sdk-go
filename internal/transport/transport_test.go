@@ -311,14 +311,16 @@ func TestSubprocessCLITransportConnect(t *testing.T) {
 
 // TestSubprocessCLITransportWrite tests writing to subprocess
 func TestSubprocessCLITransportWrite(t *testing.T) {
-	// Use cat command as a simple echo subprocess
-	catPath, err := FindMockCLI()
-	if err != nil {
-		t.Skip("No cat command available for testing")
+	// Create a mock CLI script that ignores arguments and reads from stdin.
+	// We can't use raw "cat" because buildCommandArgs() adds flags like
+	// --input-format=stream-json which GNU cat on Linux rejects as unknown options.
+	mockCLI := filepath.Join(t.TempDir(), "mock-cli.sh")
+	if err := os.WriteFile(mockCLI, []byte("#!/bin/sh\ncat\n"), 0755); err != nil {
+		t.Skip("Cannot create mock CLI script")
 	}
 
 	logger := log.NewLogger(false) // Non-verbose for tests
-	transport := NewSubprocessCLITransport(catPath, "", nil, logger, "", nil)
+	transport := NewSubprocessCLITransport(mockCLI, "", nil, logger, "", nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -340,13 +342,14 @@ func TestSubprocessCLITransportWrite(t *testing.T) {
 
 // TestSubprocessCLITransportClose tests subprocess cleanup
 func TestSubprocessCLITransportClose(t *testing.T) {
-	echoPath, err := FindMockCLI()
-	if err != nil {
-		t.Skip("No echo command available for testing")
+	// Create a mock CLI script that ignores arguments (see TestSubprocessCLITransportWrite).
+	mockCLI := filepath.Join(t.TempDir(), "mock-cli.sh")
+	if err := os.WriteFile(mockCLI, []byte("#!/bin/sh\ncat\n"), 0755); err != nil {
+		t.Skip("Cannot create mock CLI script")
 	}
 
 	logger := log.NewLogger(false) // Non-verbose for tests
-	transport := NewSubprocessCLITransport(echoPath, "", nil, logger, "", nil)
+	transport := NewSubprocessCLITransport(mockCLI, "", nil, logger, "", nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
