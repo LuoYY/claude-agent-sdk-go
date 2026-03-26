@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -341,6 +342,89 @@ func TestWithBeta(t *testing.T) {
 		}
 		if len(opts.Betas) != 0 {
 			t.Errorf("expected 0 betas by default, got %d", len(opts.Betas))
+		}
+	})
+}
+
+// TestAgentDefinitionSkills tests the Skills field on AgentDefinition.
+func TestAgentDefinitionSkills(t *testing.T) {
+	t.Run("agent with skills", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "Test prompt",
+			Skills:      []string{"code-review", "testing", "documentation"},
+		}
+
+		if len(agent.Skills) != 3 {
+			t.Errorf("expected 3 skills, got %d", len(agent.Skills))
+		}
+		if agent.Skills[0] != "code-review" {
+			t.Errorf("expected first skill to be 'code-review', got %s", agent.Skills[0])
+		}
+	})
+
+	t.Run("agent without skills omits field in JSON", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "Test prompt",
+		}
+
+		data, err := json.Marshal(agent)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+
+		// Skills should be omitted from JSON when nil
+		var decoded map[string]interface{}
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("failed to unmarshal: %v", err)
+		}
+
+		if _, exists := decoded["skills"]; exists {
+			t.Error("skills should be omitted from JSON when nil")
+		}
+	})
+
+	t.Run("agent with skills serializes correctly", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "Test prompt",
+			Skills:      []string{"coding", "review"},
+			Tools:       []string{"Read", "Write"},
+		}
+
+		data, err := json.Marshal(agent)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+
+		var decoded AgentDefinition
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("failed to unmarshal: %v", err)
+		}
+
+		if len(decoded.Skills) != 2 {
+			t.Errorf("expected 2 skills after roundtrip, got %d", len(decoded.Skills))
+		}
+		if len(decoded.Tools) != 2 {
+			t.Errorf("expected 2 tools after roundtrip, got %d", len(decoded.Tools))
+		}
+	})
+
+	t.Run("WithAgent includes skills", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().
+			WithAgent("reviewer", AgentDefinition{
+				Description: "Code reviewer",
+				Prompt:      "Review code",
+				Skills:      []string{"code-review"},
+			})
+
+		agent, ok := opts.Agents["reviewer"]
+		if !ok {
+			t.Fatal("agent 'reviewer' not found")
+		}
+		if len(agent.Skills) != 1 || agent.Skills[0] != "code-review" {
+			t.Errorf("expected skills [code-review], got %v", agent.Skills)
 		}
 	})
 }

@@ -1,5 +1,9 @@
 # Claude Agent SDK for Go - Development Guide
 
+## Important: Do Not Run Tests Locally
+
+Do NOT run `make test` or `go test` locally. Tests should only be run in CI.
+
 ## Quick Start
 
 ### Prerequisites

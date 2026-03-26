@@ -75,6 +75,7 @@ type AgentDefinition struct {
 	Description   string                 `json:"description"`
 	Prompt        string                 `json:"prompt"`
 	Tools         []string               `json:"tools,omitempty"`
+	Skills        []string               `json:"skills,omitempty"`         // List of skill names available to this agent
 	Model         *string                `json:"model,omitempty"`          // "sonnet", "opus", "haiku", "inherit"
 	ExecutionMode *SubagentExecutionMode `json:"execution_mode,omitempty"` // How this agent executes relative to others
 	Timeout       *float64               `json:"timeout,omitempty"`        // Maximum seconds to wait for agent response
