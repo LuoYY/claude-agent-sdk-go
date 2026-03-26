@@ -562,7 +562,7 @@ func TestAgentDefinitionNewFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(agent)
 		var decoded map[string]interface{}
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if decoded["memory"] != "project" {
 			t.Errorf("memory should be 'project' in JSON")
 		}
@@ -576,7 +576,7 @@ func TestAgentDefinitionNewFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(agent)
 		var decoded AgentDefinition
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if len(decoded.McpServers) != 2 {
 			t.Errorf("expected 2 mcpServers, got %d", len(decoded.McpServers))
 		}
@@ -586,7 +586,7 @@ func TestAgentDefinitionNewFields(t *testing.T) {
 		agent := AgentDefinition{Description: "Test", Prompt: "Test"}
 		data, _ := json.Marshal(agent)
 		var decoded map[string]interface{}
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		for _, field := range []string{"memory", "mcpServers", "skills"} {
 			if _, exists := decoded[field]; exists {
 				t.Errorf("%s should be omitted from JSON when empty", field)

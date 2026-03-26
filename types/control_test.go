@@ -360,7 +360,7 @@ func TestSubagentContextFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(input)
 		var decoded PreToolUseHookInput
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if decoded.AgentID == nil || *decoded.AgentID != agentID {
 			t.Errorf("agent_id mismatch")
 		}
@@ -383,7 +383,7 @@ func TestSubagentContextFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(input)
 		var decoded PostToolUseHookInput
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if decoded.ToolUseID == nil || *decoded.ToolUseID != toolUseID {
 			t.Errorf("tool_use_id mismatch")
 		}
@@ -406,7 +406,7 @@ func TestSubagentContextFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(input)
 		var decoded PostToolUseFailureHookInput
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if decoded.IsInterrupt == nil || !*decoded.IsInterrupt {
 			t.Errorf("is_interrupt mismatch")
 		}
@@ -427,7 +427,7 @@ func TestSubagentContextFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(input)
 		var decoded SubagentStopHookInput
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if decoded.AgentID != agentID {
 			t.Errorf("agent_id mismatch: got %q", decoded.AgentID)
 		}
@@ -447,7 +447,7 @@ func TestSubagentContextFields(t *testing.T) {
 		}
 		data, _ := json.Marshal(input)
 		var decoded PermissionRequestHookInput
-		json.Unmarshal(data, &decoded)
+		_ = json.Unmarshal(data, &decoded)
 		if decoded.AgentID == nil || *decoded.AgentID != agentID {
 			t.Errorf("agent_id mismatch")
 		}
