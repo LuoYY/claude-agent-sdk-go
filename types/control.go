@@ -71,16 +71,16 @@ type ToolPermissionContext struct {
 type HookEvent string
 
 const (
-	HookEventPreToolUse          HookEvent = "PreToolUse"
-	HookEventPostToolUse         HookEvent = "PostToolUse"
-	HookEventPostToolUseFailure  HookEvent = "PostToolUseFailure"
-	HookEventUserPromptSubmit    HookEvent = "UserPromptSubmit"
-	HookEventStop                HookEvent = "Stop"
-	HookEventSubagentStop        HookEvent = "SubagentStop"
-	HookEventSubagentStart       HookEvent = "SubagentStart"
-	HookEventPreCompact          HookEvent = "PreCompact"
-	HookEventNotification        HookEvent = "Notification"
-	HookEventPermissionRequest   HookEvent = "PermissionRequest"
+	HookEventPreToolUse         HookEvent = "PreToolUse"
+	HookEventPostToolUse        HookEvent = "PostToolUse"
+	HookEventPostToolUseFailure HookEvent = "PostToolUseFailure"
+	HookEventUserPromptSubmit   HookEvent = "UserPromptSubmit"
+	HookEventStop               HookEvent = "Stop"
+	HookEventSubagentStop       HookEvent = "SubagentStop"
+	HookEventSubagentStart      HookEvent = "SubagentStart"
+	HookEventPreCompact         HookEvent = "PreCompact"
+	HookEventNotification       HookEvent = "Notification"
+	HookEventPermissionRequest  HookEvent = "PermissionRequest"
 )
 
 // BaseHookInput contains common fields for all hook inputs.
@@ -159,9 +159,9 @@ type NotificationHookInput struct {
 // SubagentStartHookInput represents input for SubagentStart hook events.
 type SubagentStartHookInput struct {
 	BaseHookInput
-	HookEventName       string  `json:"hook_event_name"` // "SubagentStart"
-	AgentID             string  `json:"agent_id"`
-	AgentType           *string `json:"agent_type,omitempty"`
+	HookEventName string  `json:"hook_event_name"` // "SubagentStart"
+	AgentID       string  `json:"agent_id"`
+	AgentType     *string `json:"agent_type,omitempty"`
 }
 
 // PermissionRequestHookInput represents input for PermissionRequest hook events.
@@ -247,7 +247,7 @@ func (h *SubagentStartHookSpecificOutput) GetHookEventName() string {
 
 // PermissionRequestHookSpecificOutput represents hook-specific output for PermissionRequest events.
 type PermissionRequestHookSpecificOutput struct {
-	HookEventName            string  `json:"hookEventName"` // "PermissionRequest"
+	HookEventName            string  `json:"hookEventName"`                // "PermissionRequest"
 	PermissionDecision       *string `json:"permissionDecision,omitempty"` // "allow", "deny", "ask"
 	PermissionDecisionReason *string `json:"permissionDecisionReason,omitempty"`
 }

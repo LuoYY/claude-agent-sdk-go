@@ -233,8 +233,8 @@ func TestSubagentStartHookInput(t *testing.T) {
 			CWD:            "/home/user",
 		},
 		HookEventName: "SubagentStart",
-		AgentID:        "agent-789",
-		AgentType:      &agentType,
+		AgentID:       "agent-789",
+		AgentType:     &agentType,
 	}
 
 	data, err := json.Marshal(input)
