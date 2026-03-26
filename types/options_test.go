@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -343,6 +344,281 @@ func TestWithBeta(t *testing.T) {
 			t.Errorf("expected 0 betas by default, got %d", len(opts.Betas))
 		}
 	})
+}
+
+// TestAgentDefinitionSkills tests the Skills field on AgentDefinition.
+func TestAgentDefinitionSkills(t *testing.T) {
+	t.Run("agent with skills", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "Test prompt",
+			Skills:      []string{"code-review", "testing", "documentation"},
+		}
+
+		if len(agent.Skills) != 3 {
+			t.Errorf("expected 3 skills, got %d", len(agent.Skills))
+		}
+		if agent.Skills[0] != "code-review" {
+			t.Errorf("expected first skill to be 'code-review', got %s", agent.Skills[0])
+		}
+	})
+
+	t.Run("agent without skills omits field in JSON", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "Test prompt",
+		}
+
+		data, err := json.Marshal(agent)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+
+		// Skills should be omitted from JSON when nil
+		var decoded map[string]interface{}
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("failed to unmarshal: %v", err)
+		}
+
+		if _, exists := decoded["skills"]; exists {
+			t.Error("skills should be omitted from JSON when nil")
+		}
+	})
+
+	t.Run("agent with skills serializes correctly", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "Test prompt",
+			Skills:      []string{"coding", "review"},
+			Tools:       []string{"Read", "Write"},
+		}
+
+		data, err := json.Marshal(agent)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+
+		var decoded AgentDefinition
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("failed to unmarshal: %v", err)
+		}
+
+		if len(decoded.Skills) != 2 {
+			t.Errorf("expected 2 skills after roundtrip, got %d", len(decoded.Skills))
+		}
+		if len(decoded.Tools) != 2 {
+			t.Errorf("expected 2 tools after roundtrip, got %d", len(decoded.Tools))
+		}
+	})
+
+	t.Run("WithAgent includes skills", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().
+			WithAgent("reviewer", AgentDefinition{
+				Description: "Code reviewer",
+				Prompt:      "Review code",
+				Skills:      []string{"code-review"},
+			})
+
+		agent, ok := opts.Agents["reviewer"]
+		if !ok {
+			t.Fatal("agent 'reviewer' not found")
+		}
+		if len(agent.Skills) != 1 || agent.Skills[0] != "code-review" {
+			t.Errorf("expected skills [code-review], got %v", agent.Skills)
+		}
+	})
+}
+
+// TestThinkingConfig tests the ThinkingConfig constructors and serialization.
+func TestThinkingConfig(t *testing.T) {
+	t.Run("adaptive", func(t *testing.T) {
+		config := NewThinkingAdaptive()
+		if config.Type != "adaptive" {
+			t.Errorf("expected type 'adaptive', got %s", config.Type)
+		}
+		if config.BudgetTokens != nil {
+			t.Error("BudgetTokens should be nil for adaptive")
+		}
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		config := NewThinkingEnabled(10000)
+		if config.Type != "enabled" {
+			t.Errorf("expected type 'enabled', got %s", config.Type)
+		}
+		if config.BudgetTokens == nil || *config.BudgetTokens != 10000 {
+			t.Errorf("BudgetTokens should be 10000")
+		}
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		config := NewThinkingDisabled()
+		if config.Type != "disabled" {
+			t.Errorf("expected type 'disabled', got %s", config.Type)
+		}
+	})
+
+	t.Run("JSON roundtrip", func(t *testing.T) {
+		config := NewThinkingEnabled(5000)
+		data, err := json.Marshal(config)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+		var decoded ThinkingConfig
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("failed to unmarshal: %v", err)
+		}
+		if decoded.Type != "enabled" || decoded.BudgetTokens == nil || *decoded.BudgetTokens != 5000 {
+			t.Error("roundtrip mismatch")
+		}
+	})
+}
+
+// TestEffortLevel tests effort level constants.
+func TestEffortLevel(t *testing.T) {
+	levels := map[EffortLevel]string{
+		EffortLow:    "low",
+		EffortMedium: "medium",
+		EffortHigh:   "high",
+		EffortMax:    "max",
+	}
+	for level, expected := range levels {
+		if string(level) != expected {
+			t.Errorf("EffortLevel %q should be %q", level, expected)
+		}
+	}
+}
+
+// TestNewOptionsFields tests builder methods for new ClaudeAgentOptions fields.
+func TestNewOptionsFields(t *testing.T) {
+	t.Run("WithThinking", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithThinking(NewThinkingAdaptive())
+		if opts.Thinking == nil || opts.Thinking.Type != "adaptive" {
+			t.Error("Thinking should be adaptive")
+		}
+	})
+
+	t.Run("WithEffort", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithEffort(EffortHigh)
+		if opts.Effort == nil || *opts.Effort != EffortHigh {
+			t.Error("Effort should be high")
+		}
+	})
+
+	t.Run("WithFallbackModel", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithFallbackModel("claude-3-5-haiku-latest")
+		if opts.FallbackModel == nil || *opts.FallbackModel != "claude-3-5-haiku-latest" {
+			t.Error("FallbackModel mismatch")
+		}
+	})
+
+	t.Run("WithOutputFormat", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"answer": map[string]interface{}{"type": "string"},
+			},
+		}
+		opts := NewClaudeAgentOptions().WithOutputFormat(schema)
+		if opts.OutputFormat == nil {
+			t.Error("OutputFormat should not be nil")
+		}
+	})
+
+	t.Run("WithSandbox", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithSandbox(&SandboxSettings{Type: "docker"})
+		if opts.Sandbox == nil || opts.Sandbox.Type != "docker" {
+			t.Error("Sandbox should be docker")
+		}
+	})
+
+	t.Run("WithEnableFileCheckpointing", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithEnableFileCheckpointing(true)
+		if !opts.EnableFileCheckpointing {
+			t.Error("EnableFileCheckpointing should be true")
+		}
+	})
+
+	t.Run("WithSystemPromptFile", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithSystemPromptFile("/path/to/prompt.md")
+		spf, ok := opts.SystemPrompt.(SystemPromptFile)
+		if !ok {
+			t.Fatal("SystemPrompt should be SystemPromptFile")
+		}
+		if spf.Type != "file" || spf.Path != "/path/to/prompt.md" {
+			t.Errorf("SystemPromptFile mismatch: %+v", spf)
+		}
+	})
+}
+
+// TestAgentDefinitionNewFields tests memory and mcpServers fields on AgentDefinition.
+func TestAgentDefinitionNewFields(t *testing.T) {
+	t.Run("with memory", func(t *testing.T) {
+		memory := "project"
+		agent := AgentDefinition{
+			Description: "Test",
+			Prompt:      "Test",
+			Memory:      &memory,
+		}
+		data, _ := json.Marshal(agent)
+		var decoded map[string]interface{}
+		_ = json.Unmarshal(data, &decoded)
+		if decoded["memory"] != "project" {
+			t.Errorf("memory should be 'project' in JSON")
+		}
+	})
+
+	t.Run("with mcpServers", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test",
+			Prompt:      "Test",
+			McpServers:  []interface{}{"server1", map[string]interface{}{"url": "http://localhost"}},
+		}
+		data, _ := json.Marshal(agent)
+		var decoded AgentDefinition
+		_ = json.Unmarshal(data, &decoded)
+		if len(decoded.McpServers) != 2 {
+			t.Errorf("expected 2 mcpServers, got %d", len(decoded.McpServers))
+		}
+	})
+
+	t.Run("omits empty fields", func(t *testing.T) {
+		agent := AgentDefinition{Description: "Test", Prompt: "Test"}
+		data, _ := json.Marshal(agent)
+		var decoded map[string]interface{}
+		_ = json.Unmarshal(data, &decoded)
+		for _, field := range []string{"memory", "mcpServers", "skills"} {
+			if _, exists := decoded[field]; exists {
+				t.Errorf("%s should be omitted from JSON when empty", field)
+			}
+		}
+	})
+}
+
+// TestHookMatcherTimeout tests the timeout field on HookMatcher.
+func TestHookMatcherTimeout(t *testing.T) {
+	timeout := 30.0
+	matcher := HookMatcher{
+		Matcher: stringPtr("Bash"),
+		Timeout: &timeout,
+	}
+
+	data, err := json.Marshal(matcher)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if decoded["timeout"] != 30.0 {
+		t.Errorf("expected timeout 30.0, got %v", decoded["timeout"])
+	}
+	if decoded["matcher"] != "Bash" {
+		t.Errorf("expected matcher 'Bash', got %v", decoded["matcher"])
+	}
 }
 
 // TestSubagentExecutionModeConstants tests the SubagentExecutionMode enum values.

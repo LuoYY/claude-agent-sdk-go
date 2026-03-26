@@ -70,12 +70,62 @@ type SystemPromptPreset struct {
 	Append *string `json:"append,omitempty"`
 }
 
+// SystemPromptFile represents a file-based system prompt configuration.
+type SystemPromptFile struct {
+	Type string `json:"type"` // "file"
+	Path string `json:"path"` // Path to file containing system prompt
+}
+
+// ThinkingConfig represents extended thinking configuration.
+// Use one of the constructor functions: NewThinkingAdaptive, NewThinkingEnabled, NewThinkingDisabled.
+type ThinkingConfig struct {
+	Type         string `json:"type"`                    // "adaptive", "enabled", "disabled"
+	BudgetTokens *int   `json:"budget_tokens,omitempty"` // Required when Type is "enabled"
+}
+
+// NewThinkingAdaptive creates an adaptive thinking configuration.
+// Claude dynamically decides how much thinking to use.
+func NewThinkingAdaptive() *ThinkingConfig {
+	return &ThinkingConfig{Type: "adaptive"}
+}
+
+// NewThinkingEnabled creates an enabled thinking configuration with a token budget.
+func NewThinkingEnabled(budgetTokens int) *ThinkingConfig {
+	return &ThinkingConfig{Type: "enabled", BudgetTokens: &budgetTokens}
+}
+
+// NewThinkingDisabled creates a disabled thinking configuration.
+func NewThinkingDisabled() *ThinkingConfig {
+	return &ThinkingConfig{Type: "disabled"}
+}
+
+// EffortLevel represents the thinking effort level.
+type EffortLevel string
+
+const (
+	EffortLow    EffortLevel = "low"
+	EffortMedium EffortLevel = "medium"
+	EffortHigh   EffortLevel = "high"
+	EffortMax    EffortLevel = "max"
+)
+
+// SandboxSettings represents Bash sandbox configuration.
+type SandboxSettings struct {
+	Type    string            `json:"type"`              // Sandbox type (e.g., "docker", "local")
+	Image   *string           `json:"image,omitempty"`   // Container image (for docker type)
+	Volumes []string          `json:"volumes,omitempty"` // Volume mounts
+	Env     map[string]string `json:"env,omitempty"`     // Environment variables for sandbox
+}
+
 // AgentDefinition represents a custom agent definition.
 type AgentDefinition struct {
 	Description   string                 `json:"description"`
 	Prompt        string                 `json:"prompt"`
 	Tools         []string               `json:"tools,omitempty"`
+	Skills        []string               `json:"skills,omitempty"`         // List of skill names available to this agent
 	Model         *string                `json:"model,omitempty"`          // "sonnet", "opus", "haiku", "inherit"
+	Memory        *string                `json:"memory,omitempty"`         // "user", "project", "local"
+	McpServers    []interface{}          `json:"mcpServers,omitempty"`     // List of MCP server names (string) or configs (map)
 	ExecutionMode *SubagentExecutionMode `json:"execution_mode,omitempty"` // How this agent executes relative to others
 	Timeout       *float64               `json:"timeout,omitempty"`        // Maximum seconds to wait for agent response
 	MaxTurns      *int                   `json:"max_turns,omitempty"`      // Maximum conversation turns for this agent
@@ -153,6 +203,7 @@ type HookCallbackFunc func(ctx context.Context, input interface{}, toolUseID *st
 type HookMatcher struct {
 	Matcher *string            `json:"matcher,omitempty"` // Regex pattern for matching (e.g., "Bash", "Write|Edit")
 	Hooks   []HookCallbackFunc `json:"-"`                 // List of hook callback functions (not marshaled)
+	Timeout *float64           `json:"timeout,omitempty"` // Timeout in seconds for hook execution (default: 60)
 }
 
 // StderrCallbackFunc is a callback function for stderr output from the CLI.
@@ -190,10 +241,13 @@ type ClaudeAgentOptions struct {
 	ForkSession          bool    `json:"fork_session,omitempty"`
 
 	// Model and execution limits
-	Model             *string  `json:"model,omitempty"`
-	MaxTurns          *int     `json:"max_turns,omitempty"`
-	MaxThinkingTokens *int     `json:"max_thinking_tokens,omitempty"` // Maximum tokens for extended thinking
-	MaxBudgetUSD      *float64 `json:"max_budget_usd,omitempty"`      // Maximum budget in USD for this query
+	Model             *string         `json:"model,omitempty"`
+	FallbackModel     *string         `json:"fallback_model,omitempty"` // Fallback model if primary is unavailable
+	MaxTurns          *int            `json:"max_turns,omitempty"`
+	MaxThinkingTokens *int            `json:"max_thinking_tokens,omitempty"` // Deprecated: use Thinking instead
+	Thinking          *ThinkingConfig `json:"thinking,omitempty"`            // Extended thinking configuration
+	Effort            *EffortLevel    `json:"effort,omitempty"`              // Thinking effort level: "low", "medium", "high", "max"
+	MaxBudgetUSD      *float64        `json:"max_budget_usd,omitempty"`      // Maximum budget in USD for this query
 
 	// Beta features
 	Betas []string `json:"betas,omitempty"` // List of beta feature flags (e.g., "context-1m-2025-08-07")
@@ -231,6 +285,15 @@ type ClaudeAgentOptions struct {
 
 	// Plugin configurations for custom plugins
 	Plugins []PluginConfig `json:"plugins,omitempty"`
+
+	// Sandbox configuration for Bash tool
+	Sandbox *SandboxSettings `json:"sandbox,omitempty"`
+
+	// Structured output format (JSON schema for constraining output)
+	OutputFormat map[string]interface{} `json:"output_format,omitempty"`
+
+	// File checkpointing - track file changes for rewind capability
+	EnableFileCheckpointing bool `json:"enable_file_checkpointing,omitempty"`
 
 	// Debug and diagnostics
 	Verbose bool `json:"-"` // Enable verbose debug logging
@@ -341,10 +404,29 @@ func (o *ClaudeAgentOptions) WithMaxTurns(maxTurns int) *ClaudeAgentOptions {
 	return o
 }
 
+// WithFallbackModel sets a fallback model to use if the primary model is unavailable.
+func (o *ClaudeAgentOptions) WithFallbackModel(model string) *ClaudeAgentOptions {
+	o.FallbackModel = &model
+	return o
+}
+
 // WithMaxThinkingTokens sets the maximum tokens for extended thinking.
-// This limits how many tokens Claude can use for internal reasoning before responding.
+// Deprecated: Use WithThinking instead for more control.
 func (o *ClaudeAgentOptions) WithMaxThinkingTokens(maxTokens int) *ClaudeAgentOptions {
 	o.MaxThinkingTokens = &maxTokens
+	return o
+}
+
+// WithThinking sets the extended thinking configuration.
+// Use NewThinkingAdaptive(), NewThinkingEnabled(tokens), or NewThinkingDisabled().
+func (o *ClaudeAgentOptions) WithThinking(config *ThinkingConfig) *ClaudeAgentOptions {
+	o.Thinking = config
+	return o
+}
+
+// WithEffort sets the thinking effort level.
+func (o *ClaudeAgentOptions) WithEffort(effort EffortLevel) *ClaudeAgentOptions {
+	o.Effort = &effort
 	return o
 }
 
@@ -491,6 +573,30 @@ func (o *ClaudeAgentOptions) WithPlugin(plugin PluginConfig) *ClaudeAgentOptions
 // This is the most common way to add plugins.
 func (o *ClaudeAgentOptions) WithLocalPlugin(path string) *ClaudeAgentOptions {
 	o.Plugins = append(o.Plugins, *NewLocalPluginConfig(path))
+	return o
+}
+
+// WithSandbox sets the sandbox configuration for the Bash tool.
+func (o *ClaudeAgentOptions) WithSandbox(sandbox *SandboxSettings) *ClaudeAgentOptions {
+	o.Sandbox = sandbox
+	return o
+}
+
+// WithOutputFormat sets the structured output format (JSON schema).
+func (o *ClaudeAgentOptions) WithOutputFormat(format map[string]interface{}) *ClaudeAgentOptions {
+	o.OutputFormat = format
+	return o
+}
+
+// WithEnableFileCheckpointing enables file change tracking for rewind capability.
+func (o *ClaudeAgentOptions) WithEnableFileCheckpointing(enable bool) *ClaudeAgentOptions {
+	o.EnableFileCheckpointing = enable
+	return o
+}
+
+// WithSystemPromptFile sets the system prompt from a file path.
+func (o *ClaudeAgentOptions) WithSystemPromptFile(path string) *ClaudeAgentOptions {
+	o.SystemPrompt = SystemPromptFile{Type: "file", Path: path}
 	return o
 }
 

@@ -400,8 +400,17 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 			if len(agent.Tools) > 0 {
 				agentMap["tools"] = agent.Tools
 			}
+			if len(agent.Skills) > 0 {
+				agentMap["skills"] = agent.Skills
+			}
 			if agent.Model != nil {
 				agentMap["model"] = *agent.Model
+			}
+			if agent.Memory != nil {
+				agentMap["memory"] = *agent.Memory
+			}
+			if len(agent.McpServers) > 0 {
+				agentMap["mcpServers"] = agent.McpServers
 			}
 			if agent.ExecutionMode != nil {
 				agentMap["execution_mode"] = string(*agent.ExecutionMode)
