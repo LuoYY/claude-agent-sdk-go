@@ -97,6 +97,10 @@ type PreToolUseHookInput struct {
 	HookEventName string                 `json:"hook_event_name"` // "PreToolUse"
 	ToolName      string                 `json:"tool_name"`
 	ToolInput     map[string]interface{} `json:"tool_input"`
+	ToolUseID     *string                `json:"tool_use_id,omitempty"`
+	// Subagent context fields (present when hook fires from inside a sub-agent)
+	AgentID   *string `json:"agent_id,omitempty"`
+	AgentType *string `json:"agent_type,omitempty"`
 }
 
 // PostToolUseHookInput represents input for PostToolUse hook events.
@@ -106,6 +110,10 @@ type PostToolUseHookInput struct {
 	ToolName      string                 `json:"tool_name"`
 	ToolInput     map[string]interface{} `json:"tool_input"`
 	ToolResponse  interface{}            `json:"tool_response"`
+	ToolUseID     *string                `json:"tool_use_id,omitempty"`
+	// Subagent context fields (present when hook fires from inside a sub-agent)
+	AgentID   *string `json:"agent_id,omitempty"`
+	AgentType *string `json:"agent_type,omitempty"`
 }
 
 // UserPromptSubmitHookInput represents input for UserPromptSubmit hook events.
@@ -125,8 +133,11 @@ type StopHookInput struct {
 // SubagentStopHookInput represents input for SubagentStop hook events.
 type SubagentStopHookInput struct {
 	BaseHookInput
-	HookEventName  string `json:"hook_event_name"` // "SubagentStop"
-	StopHookActive bool   `json:"stop_hook_active"`
+	HookEventName       string  `json:"hook_event_name"` // "SubagentStop"
+	StopHookActive      bool    `json:"stop_hook_active"`
+	AgentID             string  `json:"agent_id"`
+	AgentType           *string `json:"agent_type,omitempty"`
+	AgentTranscriptPath *string `json:"agent_transcript_path,omitempty"`
 }
 
 // PreCompactHookInput represents input for PreCompact hook events.
@@ -145,6 +156,10 @@ type PostToolUseFailureHookInput struct {
 	ToolInput     map[string]interface{} `json:"tool_input"`
 	ToolUseID     *string                `json:"tool_use_id,omitempty"`
 	Error         string                 `json:"error"`
+	IsInterrupt   *bool                  `json:"is_interrupt,omitempty"`
+	// Subagent context fields (present when hook fires from inside a sub-agent)
+	AgentID   *string `json:"agent_id,omitempty"`
+	AgentType *string `json:"agent_type,omitempty"`
 }
 
 // NotificationHookInput represents input for Notification hook events.
@@ -171,6 +186,9 @@ type PermissionRequestHookInput struct {
 	ToolName              string                 `json:"tool_name"`
 	ToolInput             map[string]interface{} `json:"tool_input"`
 	PermissionSuggestions []PermissionUpdate     `json:"permission_suggestions,omitempty"`
+	// Subagent context fields (present when hook fires from inside a sub-agent)
+	AgentID   *string `json:"agent_id,omitempty"`
+	AgentType *string `json:"agent_type,omitempty"`
 }
 
 // HookSpecificOutput is an interface for all hook-specific outputs.

@@ -111,6 +111,9 @@ func (q *Query) Initialize(ctx context.Context) (map[string]interface{}, error) 
 				if matcher.Matcher != nil {
 					hookConfig["matcher"] = *matcher.Matcher
 				}
+				if matcher.Timeout != nil {
+					hookConfig["timeout"] = *matcher.Timeout
+				}
 				eventHooks = append(eventHooks, hookConfig)
 			}
 			hooksConfig[string(event)] = eventHooks

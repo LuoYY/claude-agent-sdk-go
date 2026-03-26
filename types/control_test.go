@@ -341,6 +341,119 @@ func TestNewHookSpecificOutputTypes(t *testing.T) {
 	})
 }
 
+// TestSubagentContextFields tests that subagent context fields are properly serialized
+// on tool-lifecycle hook inputs (matching Python SDK's _SubagentContextMixin).
+func TestSubagentContextFields(t *testing.T) {
+	agentID := "agent-123"
+	agentType := "code-reviewer"
+
+	t.Run("PreToolUseHookInput with subagent context", func(t *testing.T) {
+		toolUseID := "tool-789"
+		input := &PreToolUseHookInput{
+			BaseHookInput: BaseHookInput{SessionID: "s1", TranscriptPath: "/t", CWD: "/c"},
+			HookEventName: "PreToolUse",
+			ToolName:      "Bash",
+			ToolInput:     map[string]interface{}{"command": "ls"},
+			ToolUseID:     &toolUseID,
+			AgentID:       &agentID,
+			AgentType:     &agentType,
+		}
+		data, _ := json.Marshal(input)
+		var decoded PreToolUseHookInput
+		json.Unmarshal(data, &decoded)
+		if decoded.AgentID == nil || *decoded.AgentID != agentID {
+			t.Errorf("agent_id mismatch")
+		}
+		if decoded.ToolUseID == nil || *decoded.ToolUseID != toolUseID {
+			t.Errorf("tool_use_id mismatch")
+		}
+	})
+
+	t.Run("PostToolUseHookInput with subagent context", func(t *testing.T) {
+		toolUseID := "tool-456"
+		input := &PostToolUseHookInput{
+			BaseHookInput: BaseHookInput{SessionID: "s1", TranscriptPath: "/t", CWD: "/c"},
+			HookEventName: "PostToolUse",
+			ToolName:      "Bash",
+			ToolInput:     map[string]interface{}{"command": "ls"},
+			ToolResponse:  "file1.txt",
+			ToolUseID:     &toolUseID,
+			AgentID:       &agentID,
+			AgentType:     &agentType,
+		}
+		data, _ := json.Marshal(input)
+		var decoded PostToolUseHookInput
+		json.Unmarshal(data, &decoded)
+		if decoded.ToolUseID == nil || *decoded.ToolUseID != toolUseID {
+			t.Errorf("tool_use_id mismatch")
+		}
+		if decoded.AgentType == nil || *decoded.AgentType != agentType {
+			t.Errorf("agent_type mismatch")
+		}
+	})
+
+	t.Run("PostToolUseFailureHookInput with is_interrupt", func(t *testing.T) {
+		isInterrupt := true
+		input := &PostToolUseFailureHookInput{
+			BaseHookInput: BaseHookInput{SessionID: "s1", TranscriptPath: "/t", CWD: "/c"},
+			HookEventName: "PostToolUseFailure",
+			ToolName:      "Bash",
+			ToolInput:     map[string]interface{}{"command": "rm"},
+			Error:         "denied",
+			IsInterrupt:   &isInterrupt,
+			AgentID:       &agentID,
+			AgentType:     &agentType,
+		}
+		data, _ := json.Marshal(input)
+		var decoded PostToolUseFailureHookInput
+		json.Unmarshal(data, &decoded)
+		if decoded.IsInterrupt == nil || !*decoded.IsInterrupt {
+			t.Errorf("is_interrupt mismatch")
+		}
+		if decoded.AgentID == nil || *decoded.AgentID != agentID {
+			t.Errorf("agent_id mismatch")
+		}
+	})
+
+	t.Run("SubagentStopHookInput with agent fields", func(t *testing.T) {
+		transcriptPath := "/path/to/agent/transcript"
+		input := &SubagentStopHookInput{
+			BaseHookInput:       BaseHookInput{SessionID: "s1", TranscriptPath: "/t", CWD: "/c"},
+			HookEventName:       "SubagentStop",
+			StopHookActive:      true,
+			AgentID:             agentID,
+			AgentType:           &agentType,
+			AgentTranscriptPath: &transcriptPath,
+		}
+		data, _ := json.Marshal(input)
+		var decoded SubagentStopHookInput
+		json.Unmarshal(data, &decoded)
+		if decoded.AgentID != agentID {
+			t.Errorf("agent_id mismatch: got %q", decoded.AgentID)
+		}
+		if decoded.AgentTranscriptPath == nil || *decoded.AgentTranscriptPath != transcriptPath {
+			t.Errorf("agent_transcript_path mismatch")
+		}
+	})
+
+	t.Run("PermissionRequestHookInput with subagent context", func(t *testing.T) {
+		input := &PermissionRequestHookInput{
+			BaseHookInput: BaseHookInput{SessionID: "s1", TranscriptPath: "/t", CWD: "/c"},
+			HookEventName: "PermissionRequest",
+			ToolName:      "Write",
+			ToolInput:     map[string]interface{}{"path": "/tmp/x"},
+			AgentID:       &agentID,
+			AgentType:     &agentType,
+		}
+		data, _ := json.Marshal(input)
+		var decoded PermissionRequestHookInput
+		json.Unmarshal(data, &decoded)
+		if decoded.AgentID == nil || *decoded.AgentID != agentID {
+			t.Errorf("agent_id mismatch")
+		}
+	})
+}
+
 // Helper function to create a string pointer.
 func stringPtr(s string) *string {
 	return &s

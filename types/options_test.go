@@ -429,6 +429,198 @@ func TestAgentDefinitionSkills(t *testing.T) {
 	})
 }
 
+// TestThinkingConfig tests the ThinkingConfig constructors and serialization.
+func TestThinkingConfig(t *testing.T) {
+	t.Run("adaptive", func(t *testing.T) {
+		config := NewThinkingAdaptive()
+		if config.Type != "adaptive" {
+			t.Errorf("expected type 'adaptive', got %s", config.Type)
+		}
+		if config.BudgetTokens != nil {
+			t.Error("BudgetTokens should be nil for adaptive")
+		}
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		config := NewThinkingEnabled(10000)
+		if config.Type != "enabled" {
+			t.Errorf("expected type 'enabled', got %s", config.Type)
+		}
+		if config.BudgetTokens == nil || *config.BudgetTokens != 10000 {
+			t.Errorf("BudgetTokens should be 10000")
+		}
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		config := NewThinkingDisabled()
+		if config.Type != "disabled" {
+			t.Errorf("expected type 'disabled', got %s", config.Type)
+		}
+	})
+
+	t.Run("JSON roundtrip", func(t *testing.T) {
+		config := NewThinkingEnabled(5000)
+		data, err := json.Marshal(config)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+		var decoded ThinkingConfig
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatalf("failed to unmarshal: %v", err)
+		}
+		if decoded.Type != "enabled" || decoded.BudgetTokens == nil || *decoded.BudgetTokens != 5000 {
+			t.Error("roundtrip mismatch")
+		}
+	})
+}
+
+// TestEffortLevel tests effort level constants.
+func TestEffortLevel(t *testing.T) {
+	levels := map[EffortLevel]string{
+		EffortLow:    "low",
+		EffortMedium: "medium",
+		EffortHigh:   "high",
+		EffortMax:    "max",
+	}
+	for level, expected := range levels {
+		if string(level) != expected {
+			t.Errorf("EffortLevel %q should be %q", level, expected)
+		}
+	}
+}
+
+// TestNewOptionsFields tests builder methods for new ClaudeAgentOptions fields.
+func TestNewOptionsFields(t *testing.T) {
+	t.Run("WithThinking", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithThinking(NewThinkingAdaptive())
+		if opts.Thinking == nil || opts.Thinking.Type != "adaptive" {
+			t.Error("Thinking should be adaptive")
+		}
+	})
+
+	t.Run("WithEffort", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithEffort(EffortHigh)
+		if opts.Effort == nil || *opts.Effort != EffortHigh {
+			t.Error("Effort should be high")
+		}
+	})
+
+	t.Run("WithFallbackModel", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithFallbackModel("claude-3-5-haiku-latest")
+		if opts.FallbackModel == nil || *opts.FallbackModel != "claude-3-5-haiku-latest" {
+			t.Error("FallbackModel mismatch")
+		}
+	})
+
+	t.Run("WithOutputFormat", func(t *testing.T) {
+		schema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"answer": map[string]interface{}{"type": "string"},
+			},
+		}
+		opts := NewClaudeAgentOptions().WithOutputFormat(schema)
+		if opts.OutputFormat == nil {
+			t.Error("OutputFormat should not be nil")
+		}
+	})
+
+	t.Run("WithSandbox", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithSandbox(&SandboxSettings{Type: "docker"})
+		if opts.Sandbox == nil || opts.Sandbox.Type != "docker" {
+			t.Error("Sandbox should be docker")
+		}
+	})
+
+	t.Run("WithEnableFileCheckpointing", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithEnableFileCheckpointing(true)
+		if !opts.EnableFileCheckpointing {
+			t.Error("EnableFileCheckpointing should be true")
+		}
+	})
+
+	t.Run("WithSystemPromptFile", func(t *testing.T) {
+		opts := NewClaudeAgentOptions().WithSystemPromptFile("/path/to/prompt.md")
+		spf, ok := opts.SystemPrompt.(SystemPromptFile)
+		if !ok {
+			t.Fatal("SystemPrompt should be SystemPromptFile")
+		}
+		if spf.Type != "file" || spf.Path != "/path/to/prompt.md" {
+			t.Errorf("SystemPromptFile mismatch: %+v", spf)
+		}
+	})
+}
+
+// TestAgentDefinitionNewFields tests memory and mcpServers fields on AgentDefinition.
+func TestAgentDefinitionNewFields(t *testing.T) {
+	t.Run("with memory", func(t *testing.T) {
+		memory := "project"
+		agent := AgentDefinition{
+			Description: "Test",
+			Prompt:      "Test",
+			Memory:      &memory,
+		}
+		data, _ := json.Marshal(agent)
+		var decoded map[string]interface{}
+		json.Unmarshal(data, &decoded)
+		if decoded["memory"] != "project" {
+			t.Errorf("memory should be 'project' in JSON")
+		}
+	})
+
+	t.Run("with mcpServers", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test",
+			Prompt:      "Test",
+			McpServers:  []interface{}{"server1", map[string]interface{}{"url": "http://localhost"}},
+		}
+		data, _ := json.Marshal(agent)
+		var decoded AgentDefinition
+		json.Unmarshal(data, &decoded)
+		if len(decoded.McpServers) != 2 {
+			t.Errorf("expected 2 mcpServers, got %d", len(decoded.McpServers))
+		}
+	})
+
+	t.Run("omits empty fields", func(t *testing.T) {
+		agent := AgentDefinition{Description: "Test", Prompt: "Test"}
+		data, _ := json.Marshal(agent)
+		var decoded map[string]interface{}
+		json.Unmarshal(data, &decoded)
+		for _, field := range []string{"memory", "mcpServers", "skills"} {
+			if _, exists := decoded[field]; exists {
+				t.Errorf("%s should be omitted from JSON when empty", field)
+			}
+		}
+	})
+}
+
+// TestHookMatcherTimeout tests the timeout field on HookMatcher.
+func TestHookMatcherTimeout(t *testing.T) {
+	timeout := 30.0
+	matcher := HookMatcher{
+		Matcher: stringPtr("Bash"),
+		Timeout: &timeout,
+	}
+
+	data, err := json.Marshal(matcher)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if decoded["timeout"] != 30.0 {
+		t.Errorf("expected timeout 30.0, got %v", decoded["timeout"])
+	}
+	if decoded["matcher"] != "Bash" {
+		t.Errorf("expected matcher 'Bash', got %v", decoded["matcher"])
+	}
+}
+
 // TestSubagentExecutionModeConstants tests the SubagentExecutionMode enum values.
 func TestSubagentExecutionModeConstants(t *testing.T) {
 	tests := []struct {
