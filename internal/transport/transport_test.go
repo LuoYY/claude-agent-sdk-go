@@ -1806,3 +1806,218 @@ func TestBuildCommandArgs_AgentsWithSubagentExecution(t *testing.T) {
 		t.Error("--subagent-execution flag should be present")
 	}
 }
+
+// TestBuildCommandArgs_ThinkingConfig tests thinking configuration serialization
+func TestBuildCommandArgs_ThinkingConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		thinking *types.ThinkingConfig
+		expected string // expected JSON substring in --thinking value
+	}{
+		{
+			name:     "adaptive thinking",
+			thinking: types.NewThinkingAdaptive(),
+			expected: `"type":"adaptive"`,
+		},
+		{
+			name:     "enabled thinking with budget",
+			thinking: types.NewThinkingEnabled(10000),
+			expected: `"budget_tokens":10000`,
+		},
+		{
+			name:     "disabled thinking",
+			thinking: types.NewThinkingDisabled(),
+			expected: `"type":"disabled"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := types.NewClaudeAgentOptions().
+				WithThinking(tt.thinking)
+
+			transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+			args := transport.buildCommandArgs()
+
+			found := false
+			for i, arg := range args {
+				if arg == "--thinking" && i+1 < len(args) {
+					found = true
+					if !containsSubstring(args[i+1], tt.expected) {
+						t.Errorf("--thinking value %q does not contain %q", args[i+1], tt.expected)
+					}
+				}
+			}
+			if !found {
+				t.Error("--thinking flag should be present")
+			}
+
+			// Should NOT have --max-thinking-tokens when Thinking is set
+			for _, arg := range args {
+				if arg == "--max-thinking-tokens" {
+					t.Error("--max-thinking-tokens should NOT be present when --thinking is set")
+				}
+			}
+		})
+	}
+}
+
+// TestBuildCommandArgs_EffortLevel tests effort level serialization
+func TestBuildCommandArgs_EffortLevel(t *testing.T) {
+	effort := types.EffortHigh
+	opts := types.NewClaudeAgentOptions().
+		WithEffort(effort)
+
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+	args := transport.buildCommandArgs()
+
+	found := false
+	for i, arg := range args {
+		if arg == "--effort" && i+1 < len(args) {
+			found = true
+			if args[i+1] != "high" {
+				t.Errorf("expected effort 'high', got %q", args[i+1])
+			}
+		}
+	}
+	if !found {
+		t.Error("--effort flag should be present")
+	}
+}
+
+// TestBuildCommandArgs_FallbackModel tests fallback model serialization
+func TestBuildCommandArgs_FallbackModel(t *testing.T) {
+	opts := types.NewClaudeAgentOptions().
+		WithFallbackModel("claude-3-haiku-20240307")
+
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+	args := transport.buildCommandArgs()
+
+	found := false
+	for i, arg := range args {
+		if arg == "--fallback-model" && i+1 < len(args) {
+			found = true
+			if args[i+1] != "claude-3-haiku-20240307" {
+				t.Errorf("expected fallback model 'claude-3-haiku-20240307', got %q", args[i+1])
+			}
+		}
+	}
+	if !found {
+		t.Error("--fallback-model flag should be present")
+	}
+}
+
+// TestBuildCommandArgs_OutputFormat tests output format serialization
+func TestBuildCommandArgs_OutputFormat(t *testing.T) {
+	format := map[string]interface{}{
+		"type": "json_schema",
+		"schema": map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"answer": map[string]interface{}{"type": "string"},
+			},
+		},
+	}
+	opts := types.NewClaudeAgentOptions().
+		WithOutputFormat(format)
+
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+	args := transport.buildCommandArgs()
+
+	found := false
+	for i, arg := range args {
+		if arg == "--output-format" && i+1 < len(args) {
+			found = true
+			if !containsSubstring(args[i+1], `"type":"json_schema"`) {
+				t.Errorf("--output-format value should contain json_schema type, got %q", args[i+1])
+			}
+		}
+	}
+	if !found {
+		t.Error("--output-format flag should be present")
+	}
+}
+
+// TestBuildCommandArgs_Sandbox tests sandbox configuration serialization
+func TestBuildCommandArgs_Sandbox(t *testing.T) {
+	image := "ubuntu:22.04"
+	opts := types.NewClaudeAgentOptions().
+		WithSandbox(&types.SandboxSettings{
+			Type:  "docker",
+			Image: &image,
+		})
+
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+	args := transport.buildCommandArgs()
+
+	found := false
+	for i, arg := range args {
+		if arg == "--sandbox" && i+1 < len(args) {
+			found = true
+			if !containsSubstring(args[i+1], `"type":"docker"`) {
+				t.Errorf("--sandbox value should contain docker type, got %q", args[i+1])
+			}
+		}
+	}
+	if !found {
+		t.Error("--sandbox flag should be present")
+	}
+}
+
+// TestBuildCommandArgs_EnableFileCheckpointing tests file checkpointing flag
+func TestBuildCommandArgs_EnableFileCheckpointing(t *testing.T) {
+	opts := types.NewClaudeAgentOptions().
+		WithEnableFileCheckpointing(true)
+
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+	args := transport.buildCommandArgs()
+
+	found := false
+	for _, arg := range args {
+		if arg == "--enable-file-checkpointing" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("--enable-file-checkpointing flag should be present")
+	}
+}
+
+// TestBuildCommandArgs_SystemPromptFile tests file-based system prompt
+func TestBuildCommandArgs_SystemPromptFile(t *testing.T) {
+	opts := types.NewClaudeAgentOptions().
+		WithSystemPromptFile("/path/to/prompt.md")
+
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+	args := transport.buildCommandArgs()
+
+	found := false
+	for i, arg := range args {
+		if arg == "--system-prompt-file" && i+1 < len(args) {
+			found = true
+			if args[i+1] != "/path/to/prompt.md" {
+				t.Errorf("expected system prompt file '/path/to/prompt.md', got %q", args[i+1])
+			}
+		}
+	}
+	if !found {
+		t.Error("--system-prompt-file flag should be present")
+	}
+
+	// Should NOT have --system-prompt when using file
+	for i, arg := range args {
+		if arg == "--system-prompt" && i+1 < len(args) && args[i+1] == "" {
+			t.Error("--system-prompt should NOT be present when using file-based prompt")
+		}
+	}
+}
+
+// containsSubstring checks if s contains substr
+func containsSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
