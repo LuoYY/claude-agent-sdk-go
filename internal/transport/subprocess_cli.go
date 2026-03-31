@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/schlunsen/claude-agent-sdk-go/internal/log"
@@ -98,11 +99,15 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	}
 
 	// Set up environment variables
-	// Start with current environment
-	t.cmd.Env = os.Environ()
+	// Start with current environment, filtering out CLAUDECODE vars to prevent nesting
+	for _, envVar := range os.Environ() {
+		if !strings.HasPrefix(envVar, "CLAUDECODE") {
+			t.cmd.Env = append(t.cmd.Env, envVar)
+		}
+	}
 
 	// Add SDK-specific variables
-	t.cmd.Env = append(t.cmd.Env, "CLAUDE_CODE_ENTRYPOINT=agent")
+	t.cmd.Env = append(t.cmd.Env, "CLAUDE_CODE_ENTRYPOINT=sdk-go")
 	t.cmd.Env = append(t.cmd.Env, fmt.Sprintf("CLAUDE_AGENT_SDK_VERSION=%s", SDKVersion))
 
 	// Add model environment variable if specified in options (ANTHROPIC_MODEL)
@@ -121,6 +126,12 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 		t.logger.Debug("Setting ANTHROPIC_BASE_URL environment variable: %s", *t.options.BaseURL)
 	} else {
 		t.logger.Debug("ANTHROPIC_BASE_URL not set (using default Anthropic API)")
+	}
+
+	// Add file checkpointing environment variable if enabled
+	if t.options != nil && t.options.EnableFileCheckpointing {
+		t.cmd.Env = append(t.cmd.Env, "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true")
+		t.logger.Debug("Enabling file checkpointing via environment variable")
 	}
 
 	// Add custom environment variables (these can override the above if needed)
@@ -349,13 +360,14 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 	}
 
 	// Add extended thinking configuration
+	// Python SDK converts ThinkingConfig to just the token count via --max-thinking-tokens
 	if t.options != nil && t.options.Thinking != nil {
-		thinkingJSON, err := json.Marshal(t.options.Thinking)
-		if err != nil {
-			t.logger.Warning("Failed to marshal thinking config to JSON: %v", err)
+		if t.options.Thinking.Type == "enabled" && t.options.Thinking.BudgetTokens != nil {
+			args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", *t.options.Thinking.BudgetTokens))
+			t.logger.Debug("Setting max thinking tokens: %d", *t.options.Thinking.BudgetTokens)
 		} else {
-			args = append(args, "--thinking", string(thinkingJSON))
-			t.logger.Debug("Setting thinking config: %s", string(thinkingJSON))
+			// For "adaptive" or "disabled", don't pass any thinking flag - CLI handles it
+			t.logger.Debug("Thinking type is %s, CLI will handle defaults", t.options.Thinking.Type)
 		}
 	} else if t.options != nil && t.options.MaxThinkingTokens != nil {
 		// Deprecated fallback: use MaxThinkingTokens if Thinking is not set
@@ -376,13 +388,14 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 	}
 
 	// Add output format if specified (JSON schema for structured output)
+	// Python SDK extracts just the schema from output_format and passes it as --json-schema
 	if t.options != nil && t.options.OutputFormat != nil {
 		outputFormatJSON, err := json.Marshal(t.options.OutputFormat)
 		if err != nil {
 			t.logger.Warning("Failed to marshal output format to JSON: %v", err)
 		} else {
-			args = append(args, "--output-format", string(outputFormatJSON))
-			t.logger.Debug("Setting output format: %s", string(outputFormatJSON))
+			args = append(args, "--json-schema", string(outputFormatJSON))
+			t.logger.Debug("Setting JSON schema: %s", string(outputFormatJSON))
 		}
 	}
 
@@ -397,11 +410,7 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		}
 	}
 
-	// Add file checkpointing if enabled
-	if t.options != nil && t.options.EnableFileCheckpointing {
-		args = append(args, "--enable-file-checkpointing")
-		t.logger.Debug("Enabling file checkpointing")
-	}
+	// Note: File checkpointing is handled via environment variable in Connect()
 
 	// Add budget limit if specified
 	if t.options != nil && t.options.MaxBudgetUSD != nil {
@@ -430,6 +439,55 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		}
 	}
 
+	// Add allowed tools if specified (comma-separated)
+	if t.options != nil && len(t.options.AllowedTools) > 0 {
+		args = append(args, "--allowedTools", joinStrings(t.options.AllowedTools, ","))
+		t.logger.Debug("Setting allowed tools: %s", joinStrings(t.options.AllowedTools, ","))
+	}
+
+	// Add disallowed tools if specified (comma-separated)
+	if t.options != nil && len(t.options.DisallowedTools) > 0 {
+		args = append(args, "--disallowedTools", joinStrings(t.options.DisallowedTools, ","))
+		t.logger.Debug("Setting disallowed tools: %s", joinStrings(t.options.DisallowedTools, ","))
+	}
+
+	// Add max turns if specified
+	if t.options != nil && t.options.MaxTurns != nil {
+		args = append(args, "--max-turns", fmt.Sprintf("%d", *t.options.MaxTurns))
+		t.logger.Debug("Setting max turns: %d", *t.options.MaxTurns)
+	}
+
+	// Add additional directories (one flag per dir)
+	if t.options != nil && len(t.options.AddDirs) > 0 {
+		for _, dir := range t.options.AddDirs {
+			args = append(args, "--add-dir", dir)
+			t.logger.Debug("Adding directory: %s", dir)
+		}
+	}
+
+	// Add settings file path if specified
+	if t.options != nil && t.options.Settings != nil {
+		args = append(args, "--settings", *t.options.Settings)
+		t.logger.Debug("Setting settings file: %s", *t.options.Settings)
+	}
+
+	// Add MCP servers configuration (marshaled as JSON)
+	if t.options != nil && t.options.McpServers != nil {
+		mcpJSON, err := json.Marshal(t.options.McpServers)
+		if err != nil {
+			t.logger.Warning("Failed to marshal MCP servers config to JSON: %v", err)
+		} else {
+			args = append(args, "--mcp-config", string(mcpJSON))
+			t.logger.Debug("Setting MCP config: %s", string(mcpJSON))
+		}
+	}
+
+	// Add continue conversation flag
+	if t.options != nil && t.options.ContinueConversation {
+		args = append(args, "--continue")
+		t.logger.Debug("Continuing conversation")
+	}
+
 	// Add setting sources if specified (enables local slash commands, CLAUDE.md, etc.)
 	if t.options != nil && len(t.options.SettingSources) > 0 {
 		sources := make([]string, len(t.options.SettingSources))
@@ -440,52 +498,7 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting sources: %s", joinStrings(sources, ","))
 	}
 
-	// Add agents if specified
-	if t.options != nil && len(t.options.Agents) > 0 {
-		agentsJSON := make(map[string]map[string]interface{})
-
-		for name, agent := range t.options.Agents {
-			agentMap := make(map[string]interface{})
-			agentMap["description"] = agent.Description
-			agentMap["prompt"] = agent.Prompt
-
-			// Add optional fields only if set
-			if len(agent.Tools) > 0 {
-				agentMap["tools"] = agent.Tools
-			}
-			if len(agent.Skills) > 0 {
-				agentMap["skills"] = agent.Skills
-			}
-			if agent.Model != nil {
-				agentMap["model"] = *agent.Model
-			}
-			if agent.Memory != nil {
-				agentMap["memory"] = *agent.Memory
-			}
-			if len(agent.McpServers) > 0 {
-				agentMap["mcpServers"] = agent.McpServers
-			}
-			if agent.ExecutionMode != nil {
-				agentMap["execution_mode"] = string(*agent.ExecutionMode)
-			}
-			if agent.Timeout != nil {
-				agentMap["timeout"] = *agent.Timeout
-			}
-			if agent.MaxTurns != nil {
-				agentMap["max_turns"] = *agent.MaxTurns
-			}
-
-			agentsJSON[name] = agentMap
-		}
-
-		agentsJSONBytes, err := json.Marshal(agentsJSON)
-		if err != nil {
-			t.logger.Warning("Failed to marshal agents to JSON: %v", err)
-		} else {
-			args = append(args, "--agents", string(agentsJSONBytes))
-			t.logger.Debug("Agents configuration: %s", string(agentsJSONBytes))
-		}
-	}
+	// Note: Agents are sent via the initialize control protocol, not CLI flags
 
 	// Add subagent execution configuration if specified
 	if t.options != nil && t.options.SubagentExecution != nil {

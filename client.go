@@ -499,6 +499,78 @@ func (c *Client) Close(ctx context.Context) error {
 	return nil
 }
 
+// SetModel changes the AI model during the conversation.
+func (c *Client) SetModel(ctx context.Context, model string) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.SetModel(ctx, model)
+}
+
+// Interrupt sends an interrupt signal to stop current processing.
+func (c *Client) Interrupt(ctx context.Context) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.Interrupt(ctx)
+}
+
+// SetPermissionMode changes the permission mode during a conversation.
+func (c *Client) SetPermissionMode(ctx context.Context, mode types.PermissionMode) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.SetPermissionMode(ctx, mode)
+}
+
+// StopTask stops a running task by its ID.
+func (c *Client) StopTask(ctx context.Context, taskID string) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.StopTask(ctx, taskID)
+}
+
+// RewindFiles rewinds tracked files to the state at a specific user message.
+func (c *Client) RewindFiles(ctx context.Context, userMessageID string) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.RewindFiles(ctx, userMessageID)
+}
+
+// ReconnectMcpServer reconnects a disconnected or failed MCP server.
+func (c *Client) ReconnectMcpServer(ctx context.Context, serverName string) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.ReconnectMcpServer(ctx, serverName)
+}
+
+// ToggleMcpServer enables or disables an MCP server at runtime.
+func (c *Client) ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error {
+	if c.query == nil {
+		return types.NewControlProtocolError("client not connected")
+	}
+	return c.query.ToggleMcpServer(ctx, serverName, enabled)
+}
+
+// GetMcpStatus queries the current MCP server connection status.
+func (c *Client) GetMcpStatus(ctx context.Context) (map[string]interface{}, error) {
+	if c.query == nil {
+		return nil, types.NewControlProtocolError("client not connected")
+	}
+	return c.query.GetMcpStatus(ctx)
+}
+
+// GetServerInfo retrieves server initialization info.
+func (c *Client) GetServerInfo(ctx context.Context) (map[string]interface{}, error) {
+	if c.query == nil {
+		return nil, types.NewControlProtocolError("client not connected")
+	}
+	return c.query.GetServerInfo(ctx)
+}
+
 // IsConnected returns true if the client is currently connected to Claude.
 //
 // This can be used to check connection state before calling methods that require

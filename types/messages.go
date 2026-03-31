@@ -129,9 +129,11 @@ type Message interface {
 
 // UserMessage represents a message from the user.
 type UserMessage struct {
-	Type            string      `json:"type"`
-	Content         interface{} `json:"content"` // Can be string or []ContentBlock
-	ParentToolUseID *string     `json:"parent_tool_use_id,omitempty"`
+	Type            string                 `json:"type"`
+	Content         interface{}            `json:"content"` // Can be string or []ContentBlock
+	ParentToolUseID *string                `json:"parent_tool_use_id,omitempty"`
+	UUID            *string                `json:"uuid,omitempty"`
+	ToolUseResult   map[string]interface{} `json:"tool_use_result,omitempty"`
 }
 
 // GetMessageType returns the type of the message.
@@ -212,12 +214,24 @@ func (m *UserMessage) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("content must be string or array of content blocks")
 }
 
+// AssistantMessageError represents an error within an assistant message.
+type AssistantMessageError struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+}
+
 // AssistantMessage represents a message from Claude assistant.
 type AssistantMessage struct {
-	Type            string         `json:"type"`
-	Content         []ContentBlock `json:"content"`
-	Model           string         `json:"model"`
-	ParentToolUseID *string        `json:"parent_tool_use_id,omitempty"`
+	Type            string                 `json:"type"`
+	Content         []ContentBlock         `json:"content"`
+	Model           string                 `json:"model"`
+	ParentToolUseID *string                `json:"parent_tool_use_id,omitempty"`
+	Error           *AssistantMessageError `json:"error,omitempty"`
+	Usage           map[string]interface{} `json:"usage,omitempty"`
+	MessageID       *string                `json:"message_id,omitempty"`
+	StopReason      *string                `json:"stop_reason,omitempty"`
+	SessionID       *string                `json:"session_id,omitempty"`
+	UUID            *string                `json:"uuid,omitempty"`
 }
 
 // GetMessageType returns the type of the message.
@@ -344,16 +358,21 @@ func (m *SystemMessage) ShouldDisplayToUser() bool {
 
 // ResultMessage represents a result message with cost and usage information.
 type ResultMessage struct {
-	Type          string                 `json:"type"`
-	Subtype       string                 `json:"subtype"`
-	DurationMs    int                    `json:"duration_ms"`
-	DurationAPIMs int                    `json:"duration_api_ms"`
-	IsError       bool                   `json:"is_error"`
-	NumTurns      int                    `json:"num_turns"`
-	SessionID     string                 `json:"session_id"`
-	TotalCostUSD  *float64               `json:"total_cost_usd,omitempty"`
-	Usage         map[string]interface{} `json:"usage,omitempty"`
-	Result        *string                `json:"result,omitempty"`
+	Type              string                 `json:"type"`
+	Subtype           string                 `json:"subtype"`
+	DurationMs        int                    `json:"duration_ms"`
+	DurationAPIMs     int                    `json:"duration_api_ms"`
+	IsError           bool                   `json:"is_error"`
+	NumTurns          int                    `json:"num_turns"`
+	SessionID         string                 `json:"session_id"`
+	TotalCostUSD      *float64               `json:"total_cost_usd,omitempty"`
+	Usage             map[string]interface{} `json:"usage,omitempty"`
+	Result            *string                `json:"result,omitempty"`
+	StopReason        *string                `json:"stop_reason,omitempty"`
+	StructuredOutput  interface{}            `json:"structured_output,omitempty"`
+	ModelUsage        map[string]interface{} `json:"model_usage,omitempty"`
+	PermissionDenials []interface{}          `json:"permission_denials,omitempty"`
+	UUID              *string                `json:"uuid,omitempty"`
 }
 
 // GetMessageType returns the type of the message.
@@ -388,6 +407,58 @@ func (m *StreamEvent) ShouldDisplayToUser() bool {
 }
 
 func (m *StreamEvent) isMessage() {}
+
+// RateLimitStatus represents the rate limit state.
+type RateLimitStatus string
+
+const (
+	RateLimitStatusAllowed        RateLimitStatus = "allowed"
+	RateLimitStatusAllowedWarning RateLimitStatus = "allowed_warning"
+	RateLimitStatusRejected       RateLimitStatus = "rejected"
+)
+
+// RateLimitType represents the type of rate limit.
+type RateLimitType string
+
+const (
+	RateLimitTypeFiveHour       RateLimitType = "five_hour"
+	RateLimitTypeSevenDay       RateLimitType = "seven_day"
+	RateLimitTypeSevenDayOpus   RateLimitType = "seven_day_opus"
+	RateLimitTypeSevenDaySonnet RateLimitType = "seven_day_sonnet"
+	RateLimitTypeOverage        RateLimitType = "overage"
+)
+
+// RateLimitInfo contains rate limit state information.
+type RateLimitInfo struct {
+	Status                RateLimitStatus        `json:"status"`
+	ResetsAt              *string                `json:"resets_at,omitempty"`
+	RateLimitType         RateLimitType          `json:"rate_limit_type"`
+	Utilization           *float64               `json:"utilization,omitempty"`
+	OverageStatus         *string                `json:"overage_status,omitempty"`
+	OverageResetsAt       *string                `json:"overage_resets_at,omitempty"`
+	OverageDisabledReason *string                `json:"overage_disabled_reason,omitempty"`
+	Raw                   map[string]interface{} `json:"raw,omitempty"`
+}
+
+// RateLimitEvent is emitted when rate limit state changes.
+type RateLimitEvent struct {
+	Type          string         `json:"type"` // "rate_limit"
+	RateLimitInfo *RateLimitInfo `json:"rate_limit_info"`
+	UUID          *string        `json:"uuid,omitempty"`
+	SessionID     *string        `json:"session_id,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *RateLimitEvent) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns false for rate limit events (metadata only).
+func (m *RateLimitEvent) ShouldDisplayToUser() bool {
+	return false
+}
+
+func (m *RateLimitEvent) isMessage() {}
 
 // UnmarshalMessage unmarshals a JSON message into the appropriate message type.
 func UnmarshalMessage(data []byte) (Message, error) {
@@ -428,6 +499,12 @@ func UnmarshalMessage(data []byte) (Message, error) {
 		var msg StreamEvent
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal stream event", string(data), err)
+		}
+		return &msg, nil
+	case "rate_limit":
+		var msg RateLimitEvent
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal rate limit event", string(data), err)
 		}
 		return &msg, nil
 	default:

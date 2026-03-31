@@ -35,6 +35,9 @@ type Query struct {
 	hooks      map[types.HookEvent][]types.HookMatcher
 	mcpServers map[string]types.MCPServer
 
+	// Agent definitions (sent via initialize control protocol)
+	agents map[string]types.AgentDefinition
+
 	// Message handling
 	messagesChan     chan types.Message
 	stopChan         chan struct{}
@@ -72,6 +75,7 @@ func NewQuery(ctx context.Context, transport transport.Transport, opts *types.Cl
 	if opts != nil {
 		q.canUseTool = opts.CanUseTool
 		q.hooks = opts.Hooks
+		q.agents = opts.Agents
 	}
 
 	return q
@@ -126,6 +130,43 @@ func (q *Query) Initialize(ctx context.Context) (map[string]interface{}, error) 
 	}
 	if len(hooksConfig) > 0 {
 		request["hooks"] = hooksConfig
+	}
+
+	// Send agents via control protocol (matching Python/TypeScript SDK behavior)
+	if len(q.agents) > 0 {
+		agentsMap := make(map[string]interface{})
+		for name, agent := range q.agents {
+			agentDef := map[string]interface{}{
+				"description": agent.Description,
+				"prompt":      agent.Prompt,
+			}
+			if len(agent.Tools) > 0 {
+				agentDef["tools"] = agent.Tools
+			}
+			if len(agent.Skills) > 0 {
+				agentDef["skills"] = agent.Skills
+			}
+			if agent.Model != nil {
+				agentDef["model"] = *agent.Model
+			}
+			if agent.Memory != nil {
+				agentDef["memory"] = *agent.Memory
+			}
+			if len(agent.McpServers) > 0 {
+				agentDef["mcpServers"] = agent.McpServers
+			}
+			if agent.ExecutionMode != nil {
+				agentDef["execution_mode"] = string(*agent.ExecutionMode)
+			}
+			if agent.Timeout != nil {
+				agentDef["timeout"] = *agent.Timeout
+			}
+			if agent.MaxTurns != nil {
+				agentDef["max_turns"] = *agent.MaxTurns
+			}
+			agentsMap[name] = agentDef
+		}
+		request["agents"] = agentsMap
 	}
 
 	result, err := q.sendControlRequest(ctx, request)
@@ -659,6 +700,92 @@ func (q *Query) registerHookCallback(callback types.HookCallbackFunc) string {
 	callbackID := fmt.Sprintf("hook_%d", id)
 	q.hookCallbacks[callbackID] = callback
 	return callbackID
+}
+
+// SetModel changes the AI model during a conversation.
+func (q *Query) SetModel(ctx context.Context, model string) error {
+	request := map[string]interface{}{
+		"subtype": "set_model",
+		"model":   model,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// Interrupt sends an interrupt signal to stop current processing.
+func (q *Query) Interrupt(ctx context.Context) error {
+	request := map[string]interface{}{
+		"subtype": "interrupt",
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// SetPermissionMode changes the permission mode during a conversation.
+func (q *Query) SetPermissionMode(ctx context.Context, mode types.PermissionMode) error {
+	request := map[string]interface{}{
+		"subtype": "set_permission_mode",
+		"mode":    string(mode),
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// StopTask stops a running task by its ID.
+func (q *Query) StopTask(ctx context.Context, taskID string) error {
+	request := map[string]interface{}{
+		"subtype": "stop_task",
+		"task_id": taskID,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// RewindFiles rewinds tracked files to the state at a specific user message.
+func (q *Query) RewindFiles(ctx context.Context, userMessageID string) error {
+	request := map[string]interface{}{
+		"subtype":         "rewind_files",
+		"user_message_id": userMessageID,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// ReconnectMcpServer reconnects a disconnected or failed MCP server.
+func (q *Query) ReconnectMcpServer(ctx context.Context, serverName string) error {
+	request := map[string]interface{}{
+		"subtype":    "mcp_reconnect",
+		"serverName": serverName,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// ToggleMcpServer enables or disables an MCP server at runtime.
+func (q *Query) ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error {
+	request := map[string]interface{}{
+		"subtype":    "mcp_toggle",
+		"serverName": serverName,
+		"enabled":    enabled,
+	}
+	_, err := q.sendControlRequest(ctx, request)
+	return err
+}
+
+// GetMcpStatus queries the current MCP server connection status.
+func (q *Query) GetMcpStatus(ctx context.Context) (map[string]interface{}, error) {
+	request := map[string]interface{}{
+		"subtype": "mcp_status",
+	}
+	return q.sendControlRequest(ctx, request)
+}
+
+// GetServerInfo retrieves server initialization info.
+func (q *Query) GetServerInfo(ctx context.Context) (map[string]interface{}, error) {
+	request := map[string]interface{}{
+		"subtype": "get_server_info",
+	}
+	return q.sendControlRequest(ctx, request)
 }
 
 // AddMCPServer adds an MCP server for handling MCP messages.
