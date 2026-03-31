@@ -16,7 +16,7 @@ import (
 
 const (
 	// SDKVersion is the version identifier for this SDK
-	SDKVersion = "0.1.0"
+	SDKVersion = "0.6.0"
 )
 
 // SubprocessCLITransport implements Transport using a Claude Code CLI subprocess.
@@ -304,6 +304,10 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 				args = append(args, "--append-system-prompt", *preset.Append)
 				t.logger.Debug("Appending to system prompt preset: %s", *preset.Append)
 			}
+		} else if file, ok := t.options.SystemPrompt.(types.SystemPromptFile); ok {
+			// Handle file-based system prompt
+			args = append(args, "--system-prompt-file", file.Path)
+			t.logger.Debug("Setting system prompt from file: %s", file.Path)
 		}
 	} else {
 		// No options provided, use empty system prompt
@@ -344,10 +348,59 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		}
 	}
 
-	// Add extended thinking token limit if specified
-	if t.options != nil && t.options.MaxThinkingTokens != nil {
+	// Add extended thinking configuration
+	if t.options != nil && t.options.Thinking != nil {
+		thinkingJSON, err := json.Marshal(t.options.Thinking)
+		if err != nil {
+			t.logger.Warning("Failed to marshal thinking config to JSON: %v", err)
+		} else {
+			args = append(args, "--thinking", string(thinkingJSON))
+			t.logger.Debug("Setting thinking config: %s", string(thinkingJSON))
+		}
+	} else if t.options != nil && t.options.MaxThinkingTokens != nil {
+		// Deprecated fallback: use MaxThinkingTokens if Thinking is not set
 		args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", *t.options.MaxThinkingTokens))
-		t.logger.Debug("Setting max thinking tokens: %d", *t.options.MaxThinkingTokens)
+		t.logger.Debug("Setting max thinking tokens (deprecated): %d", *t.options.MaxThinkingTokens)
+	}
+
+	// Add effort level if specified
+	if t.options != nil && t.options.Effort != nil {
+		args = append(args, "--effort", string(*t.options.Effort))
+		t.logger.Debug("Setting effort level: %s", string(*t.options.Effort))
+	}
+
+	// Add fallback model if specified
+	if t.options != nil && t.options.FallbackModel != nil {
+		args = append(args, "--fallback-model", *t.options.FallbackModel)
+		t.logger.Debug("Setting fallback model: %s", *t.options.FallbackModel)
+	}
+
+	// Add output format if specified (JSON schema for structured output)
+	if t.options != nil && t.options.OutputFormat != nil {
+		outputFormatJSON, err := json.Marshal(t.options.OutputFormat)
+		if err != nil {
+			t.logger.Warning("Failed to marshal output format to JSON: %v", err)
+		} else {
+			args = append(args, "--output-format", string(outputFormatJSON))
+			t.logger.Debug("Setting output format: %s", string(outputFormatJSON))
+		}
+	}
+
+	// Add sandbox configuration if specified
+	if t.options != nil && t.options.Sandbox != nil {
+		sandboxJSON, err := json.Marshal(t.options.Sandbox)
+		if err != nil {
+			t.logger.Warning("Failed to marshal sandbox config to JSON: %v", err)
+		} else {
+			args = append(args, "--sandbox", string(sandboxJSON))
+			t.logger.Debug("Setting sandbox config: %s", string(sandboxJSON))
+		}
+	}
+
+	// Add file checkpointing if enabled
+	if t.options != nil && t.options.EnableFileCheckpointing {
+		args = append(args, "--enable-file-checkpointing")
+		t.logger.Debug("Enabling file checkpointing")
 	}
 
 	// Add budget limit if specified
