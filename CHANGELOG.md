@@ -2,6 +2,38 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.6.1] - 2026-03-31
+
+### Fixed
+- CLI arg serialization for v0.6.0 options fields — `ThinkingConfig`, `Effort`, `FallbackModel`, `OutputFormat`, `Sandbox`, `EnableFileCheckpointing`, and `SystemPromptFile` now actually get passed to the Claude CLI subprocess (were previously dead code)
+- Updated `VERSION` file from `0.5.1` to `0.6.0`
+- Updated `SDKVersion` constant from `0.1.0` to `0.6.0`
+
+### Added
+- Comprehensive tests for all new CLI argument serialization paths
+- `--system-prompt-file` support in `buildCommandArgs()` for file-based system prompts
+
+## [0.6.0] - 2026-03-31
+
+### Added
+- Skills support for agent definitions (`Skills []string` field)
+- Memory field for agent definitions (`Memory *string`)
+- MCP servers field for agent definitions (`McpServers []interface{}`)
+- Four new hook event types: `PostToolUseFailure`, `SubagentStart`, `Notification`, `PermissionRequest`
+- Subagent context fields (`agent_id`, `agent_type`) on hook inputs
+- `tool_use_id` field on `PreToolUseHookInput` and `PostToolUseHookInput`
+- `agent_transcript_path` field on `SubagentStopHookInput`
+- `HookMatcher.Timeout` field with control protocol serialization
+- `ThinkingConfig` type with `NewThinkingAdaptive()`, `NewThinkingEnabled()`, `NewThinkingDisabled()` constructors
+- `EffortLevel` type (low/medium/high/max)
+- `SandboxSettings` struct for Bash sandbox configuration
+- `SystemPromptFile` struct for file-based system prompts
+- New `ClaudeAgentOptions` fields: `FallbackModel`, `Thinking`, `Effort`, `Sandbox`, `OutputFormat`, `EnableFileCheckpointing`
+- Builder methods: `WithFallbackModel`, `WithThinking`, `WithEffort`, `WithSandbox`, `WithOutputFormat`, `WithEnableFileCheckpointing`, `WithSystemPromptFile`
+
+### Fixed
+- Flaky `TestSDKMCPServer_HandleListTools` test caused by non-deterministic map iteration order on Go 1.25
+
 ## [0.2.9] - 2025-12-07
 
 ### Added
