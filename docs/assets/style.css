@@ -22,8 +22,8 @@
     --blue-light: #dbeafe;
     --go-blue: #00ADD8;
     --go-blue-dark: #007d9c;
-    --code-bg: #1a1a2e;
-    --code-text: #e2e8f0;
+    --code-bg: #002b36;
+    --code-text: #839496;
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
     --max-width: 1200px;
@@ -190,6 +190,14 @@ body {
     text-align: center;
 }
 
+.hero-badges {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+}
+
 .hero-badge {
     display: inline-block;
     padding: 6px 16px;
@@ -198,8 +206,54 @@ body {
     color: var(--gray-600);
     font-size: 13px;
     font-weight: 500;
-    margin-bottom: 32px;
     border: 1px solid var(--gray-200);
+}
+
+.version-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    background: #ecfdf5;
+    color: #065f46;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid #a7f3d0;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: var(--font-mono);
+}
+
+.version-badge:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+}
+
+.version-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    display: inline-block;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.go-badge {
+    background: #eff6ff;
+    color: #1e40af;
+    border-color: #bfdbfe;
+    font-family: var(--font-sans);
+}
+
+.go-badge:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
 }
 
 .hero h1 {
@@ -281,7 +335,9 @@ body {
     border-radius: 8px;
     font-family: var(--font-mono);
     font-size: 14px;
-    color: var(--code-text);
+    color: #93a1a1;
+    border: 1px solid #073642;
+    box-shadow: var(--shadow-lg);
 }
 
 .hero-install code {
@@ -291,7 +347,7 @@ body {
 .copy-btn {
     background: none;
     border: none;
-    color: var(--gray-400);
+    color: #586e75;
     cursor: pointer;
     padding: 4px;
     display: flex;
@@ -301,7 +357,7 @@ body {
 }
 
 .copy-btn:hover {
-    color: var(--white);
+    color: #93a1a1;
 }
 
 /* ============================================
@@ -456,46 +512,58 @@ body {
     border-radius: var(--radius-sm);
     overflow: hidden;
     background: var(--code-bg);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid #073642;
 }
 
 .code-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
-    background: rgba(255,255,255,0.05);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 16px;
+    background: #073642;
+    border-bottom: 1px solid #094552;
 }
 
 .code-lang {
-    font-size: 12px;
-    color: var(--gray-400);
+    font-size: 11px;
+    color: #657b83;
     font-family: var(--font-mono);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    font-weight: 500;
 }
 
 .code-block pre {
-    padding: 20px;
+    padding: 20px 24px;
     overflow-x: auto;
     margin: 0;
 }
 
 .code-block code {
     font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--code-text);
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: #93a1a1;
+    text-shadow: none;
+    background: none !important;
+    padding: 0;
+    border-radius: 0;
 }
 
-/* Syntax highlighting */
-.code-block .kw { color: #c792ea; }
-.code-block .str { color: #c3e88d; }
-.code-block .fn { color: #82aaff; }
-.code-block .cmt { color: #546e7a; font-style: italic; }
-.code-block .num { color: #f78c6c; }
-.code-block .type { color: #ffcb6b; }
+.code-block code * {
+    background: none !important;
+    box-shadow: none !important;
+}
+
+/* Syntax highlighting - Solarized Dark */
+.code-block span { background: none !important; }
+.code-block .kw { color: #b58900; }
+.code-block .str { color: #2aa198; }
+.code-block .fn { color: #268bd2; }
+.code-block .cmt { color: #586e75; font-style: italic; }
+.code-block .num { color: #d33682; }
+.code-block .type { color: #cb4b16; }
 
 /* ============================================
    Example Tabs
