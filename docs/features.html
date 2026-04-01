@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Parity - Claude Agent SDK for Go</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="assets/style.css">
+    <style>
+        .parity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 600;
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            margin-bottom: 24px;
+        }
+        .doc-body td:nth-child(2),
+        .doc-body td:nth-child(3) {
+            text-align: center;
+            font-size: 16px;
+        }
+        .doc-body .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .status-card {
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            text-align: center;
+        }
+        .status-card .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--gray-900);
+            display: block;
+        }
+        .status-card .label {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <nav class="navbar scrolled">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-icon">&#9670;</span>
+                <span>claude-agent-sdk-go</span>
+            </a>
+            <div class="nav-links">
+                <a href="architecture.html">Architecture</a>
+                <a href="migration.html">Migration</a>
+                <a href="features.html" style="color:var(--gray-900)">Features</a>
+                <a href="https://github.com/schlunsen/claude-agent-sdk-go" class="nav-github" target="_blank" rel="noopener">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+            <button class="nav-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="doc-page">
+        <div class="doc-container">
+            <div class="doc-breadcrumb">
+                <a href="index.html">Home</a>
+                <span>/</span>
+                <a href="features.html">Feature Parity</a>
+            </div>
+
+            <div class="doc-body">
+                <h1>Feature Parity: Go vs Python SDK</h1>
+                <div class="parity-badge">~95% Feature Parity &middot; Production Ready</div>
+
+                <div class="status-grid">
+                    <div class="status-card">
+                        <span class="number">v0.7.0</span>
+                        <span class="label">Go SDK Version</span>
+                    </div>
+                    <div class="status-card">
+                        <span class="number">v0.1.18+</span>
+                        <span class="label">Python SDK Version</span>
+                    </div>
+                    <div class="status-card">
+                        <span class="number">~95%</span>
+                        <span class="label">Feature Parity</span>
+                    </div>
+                    <div class="status-card">
+                        <span class="number">19+</span>
+                        <span class="label">Features at 100%</span>
+                    </div>
+                </div>
+
+                <p>Both SDKs are fully functional and production-ready. This document provides a comprehensive comparison.</p>
+
+                <div class="doc-toc">
+                    <h4>Categories</h4>
+                    <ul>
+                        <li><a href="#core">Core API & Sessions</a></li>
+                        <li><a href="#messages">Message Types</a></li>
+                        <li><a href="#tools">Tool Integration</a></li>
+                        <li><a href="#mcp">MCP Support</a></li>
+                        <li><a href="#hooks">Hook System</a></li>
+                        <li><a href="#thinking">Extended Thinking</a></li>
+                        <li><a href="#costs">Cost Management</a></li>
+                        <li><a href="#choose">When to Use Each SDK</a></li>
+                    </ul>
+                </div>
+
+                <hr>
+
+                <h2 id="core">Core API & Session Management</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Query (one-shot)</strong></td><td>&#10003;</td><td>&#10003;</td><td>Simple one-off requests</td></tr>
+                        <tr><td><strong>Client (interactive)</strong></td><td>&#10003;</td><td>&#10003;</td><td>Full bidirectional communication</td></tr>
+                        <tr><td><strong>Message streaming</strong></td><td>&#10003;</td><td>&#10003;</td><td>Python: async generators, Go: channels</td></tr>
+                        <tr><td><strong>Session resumption</strong></td><td>&#10003;</td><td>&#10003;</td><td>Continue previous conversations</td></tr>
+                        <tr><td><strong>Session forking</strong></td><td>&#10003;</td><td>&#10003;</td><td>Branch from existing sessions</td></tr>
+                        <tr><td><strong>Message history</strong></td><td>&#10003;</td><td>&#10003;</td><td>Access and replay messages</td></tr>
+                        <tr><td><strong>Model selection</strong></td><td>&#10003;</td><td>&#10003;</td><td>Switch between models</td></tr>
+                        <tr><td><strong>Max turns control</strong></td><td>&#10003;</td><td>&#10003;</td><td>Limit conversation length</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="messages">Message Types & Content Blocks</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>User messages</strong></td><td>&#10003;</td><td>&#10003;</td><td>User input handling</td></tr>
+                        <tr><td><strong>Assistant messages</strong></td><td>&#10003;</td><td>&#10003;</td><td>Claude responses</td></tr>
+                        <tr><td><strong>System messages</strong></td><td>&#10003;</td><td>&#10003;</td><td>System notifications</td></tr>
+                        <tr><td><strong>Result messages</strong></td><td>&#10003;</td><td>&#10003;</td><td>Final cost/token info</td></tr>
+                        <tr><td><strong>Text content blocks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Plain text responses</td></tr>
+                        <tr><td><strong>Tool use blocks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Tool invocation requests</td></tr>
+                        <tr><td><strong>Tool result blocks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Tool execution results</td></tr>
+                        <tr><td><strong>Thinking blocks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Extended thinking output</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="tools">Tool Integration & Permissions</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Tool permissions</strong></td><td>&#10003;</td><td>&#10003;</td><td>Permission callbacks</td></tr>
+                        <tr><td><strong>Permission modes</strong></td><td>&#10003;</td><td>&#10003;</td><td>default, acceptEdits, plan, bypass</td></tr>
+                        <tr><td><strong>Tool filtering</strong></td><td>&#10003;</td><td>&#10003;</td><td>AllowedTools, DisallowedTools</td></tr>
+                        <tr><td><strong>Updated input support</strong></td><td>&#10003;</td><td>&#10003;</td><td>Callbacks can modify tool inputs</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="mcp">MCP (Model Context Protocol) Support</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>SDK MCP servers</strong></td><td>&#10003;</td><td>&#10003;</td><td>Create tools in-process</td></tr>
+                        <tr><td><strong>External MCP servers</strong></td><td>&#10003;</td><td>&#10003;</td><td>stdio, SSE, HTTP connections</td></tr>
+                        <tr><td><strong>Custom MCP servers</strong></td><td>&#10003;</td><td>&#10003;</td><td>Implement MCPServer interface</td></tr>
+                        <tr><td><strong>MCP factory function</strong></td><td>-</td><td>&#10003;</td><td>Go-exclusive convenience API</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="hooks">Hook System</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Pre-tool hooks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Before tool execution</td></tr>
+                        <tr><td><strong>Post-tool hooks</strong></td><td>&#10003;</td><td>&#10003;</td><td>After tool execution</td></tr>
+                        <tr><td><strong>User prompt hooks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Before user input processing</td></tr>
+                        <tr><td><strong>Regex matching</strong></td><td>&#10003;</td><td>&#10003;</td><td>Filter by tool name pattern</td></tr>
+                        <tr><td><strong>Hook continuation</strong></td><td>&#10003;</td><td>&#10003;</td><td>Control execution flow</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="thinking">Extended Thinking</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Extended thinking</strong></td><td>&#10003;</td><td>&#10003;</td><td>Long-form reasoning</td></tr>
+                        <tr><td><strong>Max thinking tokens</strong></td><td>&#10003;</td><td>&#10003;</td><td>Limit thinking output</td></tr>
+                        <tr><td><strong>Thinking blocks</strong></td><td>&#10003;</td><td>&#10003;</td><td>Access reasoning process</td></tr>
+                        <tr><td><strong>Thinking control</strong></td><td>&#10003;</td><td>&#10003;</td><td>Enable/disable/adaptive</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="costs">Cost Management</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Python</th><th>Go</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Token counting</strong></td><td>&#10003;</td><td>&#10003;</td><td>Input/output token counts</td></tr>
+                        <tr><td><strong>Cost summary</strong></td><td>&#10003;</td><td>&#10003;</td><td>Usage statistics per message</td></tr>
+                        <tr><td><strong>Budget limiting</strong></td><td>&#10003;</td><td>&#10003;</td><td>Max budget in USD</td></tr>
+                        <tr><td><strong>Cost estimation</strong></td><td>&#10003;</td><td>&#10003;</td><td>Predict costs</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2 id="choose">When to Use Each SDK</h2>
+
+                <h3>Choose Go SDK When:</h3>
+                <ul>
+                    <li>You need concurrent request handling (1M+ goroutines)</li>
+                    <li>You want strong compile-time type safety</li>
+                    <li>You need high-performance, low-latency responses</li>
+                    <li>You want single-binary deployment</li>
+                    <li>You're building microservices or cloud-native apps</li>
+                </ul>
+
+                <h3>Choose Python SDK When:</h3>
+                <ul>
+                    <li>You prefer Python's syntax and ecosystem</li>
+                    <li>You need rapid prototyping capabilities</li>
+                    <li>You're working with Jupyter notebooks</li>
+                    <li>You have an existing Python codebase</li>
+                    <li>You prefer async/await patterns</li>
+                </ul>
+
+                <blockquote>
+                    <p>Both SDKs use the same control protocol, so migrating code between them is straightforward. They are also interoperable in microservice architectures.</p>
+                </blockquote>
+
+                <hr>
+
+                <h2>Compatibility</h2>
+
+                <p>Both SDKs use the same control protocol and are forward-compatible. Install the Claude Code CLI once and use both SDKs on the same machine.</p>
+
+                <table>
+                    <thead>
+                        <tr><th>Go SDK Version</th><th>Python SDK Version</th><th>Compatible</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>v0.2.0+</td><td>v0.1.0+</td><td>&#10003; Yes</td></tr>
+                        <tr><td>v0.1.0+</td><td>v0.1.0+</td><td>&#10003; Yes</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <p><strong>Further reading:</strong> <a href="architecture.html">Architecture Differences</a> | <a href="migration.html">Migration Guide</a></p>
+                <p><strong>Found a missing feature?</strong> <a href="https://github.com/schlunsen/claude-agent-sdk-go/issues" target="_blank" rel="noopener">Open an issue</a></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span class="logo-icon">&#9670;</span>
+                    <span>claude-agent-sdk-go</span>
+                </div>
+                <div class="footer-right">
+                    <p>Community project &middot; Not affiliated with Anthropic &middot; MIT License</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/three-bg.js"></script>
+    <script>
+        document.querySelector('.nav-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+    </script>
+</body>
+</html>

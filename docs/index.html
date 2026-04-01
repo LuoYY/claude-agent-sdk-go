@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Agent SDK for Go</title>
+    <meta name="description" content="Build powerful AI agent applications in Go with the Claude Agent SDK. Idiomatic Go, zero dependencies, full streaming support.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <!-- Three.js Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">&#9670;</span>
+                <span>claude-agent-sdk-go</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#quickstart">Quick Start</a>
+                <a href="#examples">Examples</a>
+                <a href="architecture.html">Docs</a>
+                <a href="https://github.com/schlunsen/claude-agent-sdk-go" class="nav-github" target="_blank" rel="noopener">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+            <button class="nav-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">Open Source &middot; MIT License &middot; v0.7.0</div>
+            <h1>Build AI Agents<br><span class="gradient-text">in Go</span></h1>
+            <p class="hero-subtitle">
+                The unofficial Go SDK for building multi-turn AI agent applications with Claude.
+                Idiomatic Go. Zero dependencies. Full streaming.
+            </p>
+            <div class="hero-actions">
+                <a href="#quickstart" class="btn btn-primary">Get Started</a>
+                <a href="https://github.com/schlunsen/claude-agent-sdk-go" class="btn btn-secondary" target="_blank" rel="noopener">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    View on GitHub
+                </a>
+            </div>
+            <div class="hero-install">
+                <code>go get github.com/schlunsen/claude-agent-sdk-go</code>
+                <button class="copy-btn" onclick="copyInstall(this)" title="Copy to clipboard">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Everything you need to build agents</h2>
+                <p>A complete SDK designed for Go developers, with zero external dependencies.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">&#9889;</div>
+                    <h3>One-Shot Queries</h3>
+                    <p>Simple <code>Query()</code> function for single interactions. Send a prompt, get streaming responses through channels.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#8644;</div>
+                    <h3>Interactive Sessions</h3>
+                    <p>Bidirectional <code>Client</code> for multi-turn conversations with full session state management.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128274;</div>
+                    <h3>Permission Control</h3>
+                    <p>Fine-grained tool permissions with callbacks. Approve, deny, or modify tool usage in real-time.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#127907;</div>
+                    <h3>Hook System</h3>
+                    <p>Respond to lifecycle events: PreToolUse, PostToolUse, Notifications, and more with pattern matching.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128225;</div>
+                    <h3>MCP Support</h3>
+                    <p>Full Model Context Protocol integration. Connect external servers or build your own MCP services.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#9881;</div>
+                    <h3>Idiomatic Go</h3>
+                    <p>Goroutines, channels, context propagation. Built for Go developers, not a port with Python patterns.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128230;</div>
+                    <h3>Zero Dependencies</h3>
+                    <p>Core SDK uses only the Go standard library. No bloated dependency trees to manage.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">&#128200;</div>
+                    <h3>Full Streaming</h3>
+                    <p>Real-time message streaming with partial outputs, thinking blocks, and tool use events.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="section section-alt">
+        <div class="container">
+            <div class="section-header">
+                <h2>Up and running in minutes</h2>
+                <p>Two lines to install, five lines to your first query.</p>
+            </div>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Install the CLI</h3>
+                        <p>The SDK communicates with Claude through the Claude Code CLI.</p>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-lang">bash</span>
+                                <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                            </div>
+<pre><code>npm install -g @anthropic-ai/claude-code</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Add the SDK</h3>
+                        <p>Install the Go module in your project.</p>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-lang">bash</span>
+                                <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                            </div>
+<pre><code>go get github.com/schlunsen/claude-agent-sdk-go</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Set your API key</h3>
+                        <p>Authenticate with an API key or OAuth token.</p>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-lang">bash</span>
+                                <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                            </div>
+<pre><code>export CLAUDE_API_KEY="sk-ant-..."</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>Query Claude</h3>
+                        <p>Send your first query and stream the response.</p>
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span class="code-lang">go</span>
+                                <button class="copy-btn" onclick="copyCode(this)" title="Copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+                            </div>
+<pre><code><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log"</span>
+
+    claude <span class="str">"github.com/schlunsen/claude-agent-sdk-go"</span>
+    <span class="str">"github.com/schlunsen/claude-agent-sdk-go/types"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    ctx := context.<span class="fn">Background</span>()
+    opts := types.<span class="fn">NewClaudeAgentOptions</span>()
+
+    messages, err := claude.<span class="fn">Query</span>(ctx, <span class="str">"What is 2 + 2?"</span>, opts)
+    <span class="kw">if</span> err != <span class="kw">nil</span> {
+        log.<span class="fn">Fatal</span>(err)
+    }
+
+    <span class="kw">for</span> msg := <span class="kw">range</span> messages {
+        <span class="kw">if</span> a, ok := msg.(*types.AssistantMessage); ok {
+            <span class="kw">for</span> _, block := <span class="kw">range</span> a.Content {
+                <span class="kw">if</span> t, ok := block.(*types.TextBlock); ok {
+                    fmt.<span class="fn">Println</span>(t.Text)
+                }
+            }
+        }
+    }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Examples Section -->
+    <section id="examples" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Powerful patterns, simple code</h2>
+                <p>From one-shot queries to multi-turn agents with tool control.</p>
+            </div>
+
+            <div class="example-tabs">
+                <button class="tab-btn active" data-tab="interactive">Interactive Client</button>
+                <button class="tab-btn" data-tab="permissions">Permissions</button>
+                <button class="tab-btn" data-tab="hooks">Hooks</button>
+            </div>
+
+            <div class="tab-content active" id="tab-interactive">
+                <div class="example-split">
+                    <div class="example-desc">
+                        <h3>Multi-Turn Conversations</h3>
+                        <p>The <code>Client</code> maintains session state across multiple queries, enabling natural back-and-forth conversations with Claude.</p>
+                        <ul>
+                            <li>Persistent session context</li>
+                            <li>Streaming responses via channels</li>
+                            <li>Graceful connection lifecycle</li>
+                        </ul>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">go</span>
+                        </div>
+<pre><code>client, _ := claude.<span class="fn">NewClient</span>(ctx, opts)
+client.<span class="fn">Connect</span>(ctx)
+<span class="kw">defer</span> client.<span class="fn">Close</span>(ctx)
+
+<span class="cmt">// First turn</span>
+client.<span class="fn">Query</span>(ctx, <span class="str">"Explain goroutines"</span>)
+<span class="kw">for</span> msg := <span class="kw">range</span> client.<span class="fn">ReceiveResponse</span>(ctx) {
+    <span class="cmt">// process streaming response</span>
+}
+
+<span class="cmt">// Follow-up (maintains context)</span>
+client.<span class="fn">Query</span>(ctx, <span class="str">"How do they compare to threads?"</span>)
+<span class="kw">for</span> msg := <span class="kw">range</span> client.<span class="fn">ReceiveResponse</span>(ctx) {
+    <span class="cmt">// Claude remembers the conversation</span>
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-permissions">
+                <div class="example-split">
+                    <div class="example-desc">
+                        <h3>Tool Permission Control</h3>
+                        <p>Control exactly which tools Claude can use with callback-based permission checks.</p>
+                        <ul>
+                            <li>Allow/deny tools dynamically</li>
+                            <li>Inspect tool inputs before execution</li>
+                            <li>Multiple permission modes</li>
+                        </ul>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">go</span>
+                        </div>
+<pre><code>opts := types.<span class="fn">NewClaudeAgentOptions</span>().
+    <span class="fn">WithCanUseTool</span>(<span class="kw">func</span>(
+        tool <span class="kw">string</span>, input <span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">any</span>,
+    ) (*types.PermissionResponse, <span class="kw">error</span>) {
+        <span class="kw">if</span> tool == <span class="str">"Bash"</span> {
+            cmd := input[<span class="str">"command"</span>].(<span class="kw">string</span>)
+            <span class="kw">if</span> strings.<span class="fn">Contains</span>(cmd, <span class="str">"rm -rf"</span>) {
+                <span class="kw">return</span> types.<span class="fn">DenyPermission</span>(
+                    <span class="str">"Destructive commands blocked"</span>,
+                ), <span class="kw">nil</span>
+            }
+        }
+        <span class="kw">return</span> types.<span class="fn">AllowPermission</span>(), <span class="kw">nil</span>
+    })</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-hooks">
+                <div class="example-split">
+                    <div class="example-desc">
+                        <h3>Lifecycle Hooks</h3>
+                        <p>React to agent events with pattern-matched hooks for logging, auditing, or custom behavior.</p>
+                        <ul>
+                            <li>Pre/Post tool execution</li>
+                            <li>Subagent lifecycle events</li>
+                            <li>Pattern-matched filtering</li>
+                        </ul>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-lang">go</span>
+                        </div>
+<pre><code>opts := types.<span class="fn">NewClaudeAgentOptions</span>().
+    <span class="fn">WithHook</span>(types.PreToolUse, types.HookMatcher{
+        ToolName: <span class="str">"Bash"</span>,
+        Handler: <span class="kw">func</span>(
+            input <span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">any</span>,
+        ) (*types.HookResponse, <span class="kw">error</span>) {
+            fmt.<span class="fn">Printf</span>(<span class="str">"Running: %s\n"</span>,
+                input[<span class="str">"command"</span>])
+            <span class="kw">return</span> &types.HookResponse{
+                Decision: types.HookApprove,
+            }, <span class="kw">nil</span>
+        },
+    })</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Comparison Section -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="section-header">
+                <h2>Why Go?</h2>
+                <p>Purpose-built for production workloads where performance matters.</p>
+            </div>
+            <div class="comparison-grid">
+                <div class="comparison-card">
+                    <div class="comparison-label">Startup Time</div>
+                    <div class="comparison-bars">
+                        <div class="bar-row">
+                            <span class="bar-label">Go</span>
+                            <div class="bar-track"><div class="bar-fill bar-go" style="width: 15%"></div></div>
+                            <span class="bar-value">~30ms</span>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Python</span>
+                            <div class="bar-track"><div class="bar-fill bar-python" style="width: 80%"></div></div>
+                            <span class="bar-value">~300ms</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <div class="comparison-label">Memory per Request</div>
+                    <div class="comparison-bars">
+                        <div class="bar-row">
+                            <span class="bar-label">Go</span>
+                            <div class="bar-track"><div class="bar-fill bar-go" style="width: 10%"></div></div>
+                            <span class="bar-value">~1KB</span>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Python</span>
+                            <div class="bar-track"><div class="bar-fill bar-python" style="width: 70%"></div></div>
+                            <span class="bar-value">~100KB</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <div class="comparison-label">Concurrent Requests</div>
+                    <div class="comparison-bars">
+                        <div class="bar-row">
+                            <span class="bar-label">Go</span>
+                            <div class="bar-track"><div class="bar-fill bar-go" style="width: 95%"></div></div>
+                            <span class="bar-value">1M+</span>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Python</span>
+                            <div class="bar-track"><div class="bar-fill bar-python" style="width: 8%"></div></div>
+                            <span class="bar-value">~100</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <div class="comparison-label">GC Pause</div>
+                    <div class="comparison-bars">
+                        <div class="bar-row">
+                            <span class="bar-label">Go</span>
+                            <div class="bar-track"><div class="bar-fill bar-go" style="width: 8%"></div></div>
+                            <span class="bar-value">&lt;1ms</span>
+                        </div>
+                        <div class="bar-row">
+                            <span class="bar-label">Python</span>
+                            <div class="bar-track"><div class="bar-fill bar-python" style="width: 60%"></div></div>
+                            <span class="bar-value">1-10ms</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation Section -->
+    <section id="docs" class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2>Documentation</h2>
+                <p>Comprehensive guides to get the most out of the SDK.</p>
+            </div>
+            <div class="docs-grid">
+                <a href="architecture.html" class="doc-card">
+                    <div class="doc-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    </div>
+                    <h3>Architecture</h3>
+                    <p>Deep dive into Go vs Python design decisions, concurrency models, and type systems.</p>
+                    <span class="doc-link">Read guide &rarr;</span>
+                </a>
+                <a href="migration.html" class="doc-card">
+                    <div class="doc-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </div>
+                    <h3>Migration from Python</h3>
+                    <p>Step-by-step guide with side-by-side code examples for Python developers.</p>
+                    <span class="doc-link">Read guide &rarr;</span>
+                </a>
+                <a href="features.html" class="doc-card">
+                    <div class="doc-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+                    </div>
+                    <h3>Feature Parity</h3>
+                    <p>Complete feature comparison matrix with the official Python SDK (~95% parity).</p>
+                    <span class="doc-link">Read guide &rarr;</span>
+                </a>
+                <a href="https://pkg.go.dev/github.com/schlunsen/claude-agent-sdk-go" class="doc-card" target="_blank" rel="noopener">
+                    <div class="doc-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h6"/></svg>
+                    </div>
+                    <h3>API Reference</h3>
+                    <p>Full GoDoc API reference with all types, functions, and interfaces.</p>
+                    <span class="doc-link">pkg.go.dev &rarr;</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to build?</h2>
+                <p>Get started with the Claude Agent SDK for Go today.</p>
+                <div class="hero-actions">
+                    <a href="https://github.com/schlunsen/claude-agent-sdk-go" class="btn btn-primary" target="_blank" rel="noopener">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        Star on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span class="logo-icon">&#9670;</span>
+                    <span>claude-agent-sdk-go</span>
+                </div>
+                <div class="footer-right">
+                    <p>Community project &middot; Not affiliated with Anthropic &middot; MIT License</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="assets/three-bg.js"></script>
+    <script>
+        // Mobile nav toggle
+        document.querySelector('.nav-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Copy helpers
+        function copyInstall(btn) {
+            navigator.clipboard.writeText('go get github.com/schlunsen/claude-agent-sdk-go');
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
+            setTimeout(() => {
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+            }, 2000);
+        }
+
+        function copyCode(btn) {
+            const code = btn.closest('.code-block').querySelector('code').textContent;
+            navigator.clipboard.writeText(code);
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
+            setTimeout(() => {
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+            }, 2000);
+        }
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    document.querySelector('.nav-links').classList.remove('active');
+                }
+            });
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            document.querySelector('.navbar').classList.toggle('scrolled', window.scrollY > 50);
+        });
+
+        // Animate elements on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .step, .doc-card, .comparison-card').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

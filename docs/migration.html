@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migration from Python - Claude Agent SDK for Go</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <nav class="navbar scrolled">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-icon">&#9670;</span>
+                <span>claude-agent-sdk-go</span>
+            </a>
+            <div class="nav-links">
+                <a href="architecture.html">Architecture</a>
+                <a href="migration.html" style="color:var(--gray-900)">Migration</a>
+                <a href="features.html">Features</a>
+                <a href="https://github.com/schlunsen/claude-agent-sdk-go" class="nav-github" target="_blank" rel="noopener">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+            <button class="nav-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="doc-page">
+        <div class="doc-container">
+            <div class="doc-breadcrumb">
+                <a href="index.html">Home</a>
+                <span>/</span>
+                <a href="migration.html">Migration from Python</a>
+            </div>
+
+            <div class="doc-body">
+                <h1>Migration Guide: Python to Go</h1>
+                <p>This guide helps Python developers transition to the Go Agent SDK. While the APIs differ due to language differences, the concepts are the same.</p>
+
+                <div class="doc-toc">
+                    <h4>Contents</h4>
+                    <ul>
+                        <li><a href="#quickstart">Quick Start Comparison</a></li>
+                        <li><a href="#configuration">Configuration Migration</a></li>
+                        <li><a href="#patterns">Query/Response Patterns</a></li>
+                        <li><a href="#hooks">Hook System</a></li>
+                        <li><a href="#permissions">Permission Handling</a></li>
+                        <li><a href="#mcp">MCP Servers</a></li>
+                        <li><a href="#errors">Error Handling</a></li>
+                        <li><a href="#checklist">Migration Checklist</a></li>
+                    </ul>
+                </div>
+
+                <hr>
+
+                <h2 id="quickstart">Quick Start Comparison</h2>
+
+                <h3>Python</h3>
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">python</span></div>
+<pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> claude_agent_sdk <span class="kw">import</span> Agent
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    client = <span class="fn">Agent</span>()
+    <span class="kw">async for</span> message <span class="kw">in</span> client.<span class="fn">query</span>(<span class="str">"What is 2+2?"</span>):
+        <span class="fn">print</span>(f<span class="str">"{message.type}: {message.content}"</span>)
+
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())</code></pre>
+                </div>
+
+                <h3>Go</h3>
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    sdk <span class="str">"github.com/schlunsen/claude-agent-sdk-go"</span>
+    <span class="str">"github.com/schlunsen/claude-agent-sdk-go/types"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    ctx := context.<span class="fn">Background</span>()
+    messages, _ := sdk.<span class="fn">Query</span>(ctx, <span class="str">"What is 2+2?"</span>, <span class="kw">nil</span>)
+    <span class="kw">for</span> message := <span class="kw">range</span> messages {
+        <span class="kw">switch</span> m := message.(<span class="kw">type</span>) {
+        <span class="kw">case</span> *types.AssistantMessage:
+            fmt.<span class="fn">Printf</span>(<span class="str">"Assistant: %v\n"</span>, m.Content)
+        }
+    }
+}</code></pre>
+                </div>
+
+                <hr>
+
+                <h2 id="configuration">Configuration Migration</h2>
+
+                <p>Python uses dataclass constructors, Go uses a builder pattern with method chaining:</p>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">python</span></div>
+<pre><code><span class="cmt"># Python: Dataclass constructor</span>
+options = <span class="fn">AgentOptions</span>(
+    model=<span class="str">"claude-opus-4-20250514"</span>,
+    allowed_tools=[<span class="str">"Bash"</span>, <span class="str">"Read"</span>, <span class="str">"Write"</span>],
+    system_prompt=<span class="str">"You are a helpful assistant"</span>,
+    max_turns=<span class="num">10</span>,
+)</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code><span class="cmt">// Go: Builder pattern</span>
+options := types.<span class="fn">NewClaudeAgentOptions</span>().
+    <span class="fn">WithModel</span>(<span class="str">"claude-opus-4-20250514"</span>).
+    <span class="fn">WithAllowedTools</span>(<span class="str">"Bash"</span>, <span class="str">"Read"</span>, <span class="str">"Write"</span>).
+    <span class="fn">WithSystemPrompt</span>(<span class="str">"You are a helpful assistant"</span>).
+    <span class="fn">WithMaxTurns</span>(<span class="num">10</span>)</code></pre>
+                </div>
+
+                <blockquote>
+                    <p><strong>Key difference:</strong> Go configuration is verified at compile-time, not runtime. Each <code>With*()</code> method returns the options object for chaining.</p>
+                </blockquote>
+
+                <hr>
+
+                <h2 id="patterns">Query/Response Patterns</h2>
+
+                <h3>Pattern 1: Interactive Client with Session</h3>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">python</span></div>
+<pre><code><span class="kw">async def</span> <span class="fn">main</span>():
+    client = <span class="fn">Agent</span>()
+    <span class="kw">await</span> client.<span class="fn">connect</span>()
+
+    <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">"What is the capital of France?"</span>)
+    <span class="kw">async for</span> msg <span class="kw">in</span> client.<span class="fn">receive_response</span>():
+        messages.<span class="fn">append</span>(msg)
+
+    <span class="kw">await</span> client.<span class="fn">query</span>(<span class="str">"And Germany?"</span>)
+    <span class="kw">async for</span> msg <span class="kw">in</span> client.<span class="fn">receive_response</span>():
+        messages.<span class="fn">append</span>(msg)
+
+    <span class="kw">await</span> client.<span class="fn">close</span>()</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code><span class="kw">func</span> <span class="fn">main</span>() {
+    ctx := context.<span class="fn">Background</span>()
+    client, _ := sdk.<span class="fn">NewClient</span>(ctx, options)
+    <span class="kw">defer</span> client.<span class="fn">Close</span>(ctx)
+
+    client.<span class="fn">Connect</span>(ctx)
+
+    client.<span class="fn">Query</span>(ctx, <span class="str">"What is the capital of France?"</span>)
+    <span class="kw">for</span> msg := <span class="kw">range</span> client.<span class="fn">ReceiveResponse</span>(ctx) {
+        messages = <span class="fn">append</span>(messages, msg)
+    }
+
+    client.<span class="fn">Query</span>(ctx, <span class="str">"And Germany?"</span>)
+    <span class="kw">for</span> msg := <span class="kw">range</span> client.<span class="fn">ReceiveResponse</span>(ctx) {
+        messages = <span class="fn">append</span>(messages, msg)
+    }
+}</code></pre>
+                </div>
+
+                <hr>
+
+                <h2 id="hooks">Hook System Migration</h2>
+
+                <p>Python uses decorators, Go uses explicit hook callbacks in options:</p>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">python</span></div>
+<pre><code><span class="cmt"># Python: Decorator-based hooks</span>
+@client.<span class="fn">hook</span>(HookEvent.PRE_TOOL_USE)
+<span class="kw">async def</span> <span class="fn">log_before_tool</span>(input_data, hook_context):
+    <span class="fn">print</span>(f<span class="str">"About to call: {hook_context.tool_name}"</span>)
+    <span class="kw">return</span> {<span class="str">"continue"</span>: <span class="kw">True</span>}</code></pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code><span class="cmt">// Go: Explicit hook matchers in options</span>
+preHook := types.HookMatcher{
+    Matcher: <span class="fn">stringPtr</span>(<span class="str">".*"</span>),
+    Hooks: []types.HookCallbackFunc{
+        <span class="kw">func</span>(ctx context.Context, input <span class="kw">interface</span>{},
+            toolUseID *<span class="kw">string</span>, hookCtx types.HookContext,
+        ) (<span class="kw">interface</span>{}, <span class="kw">error</span>) {
+            fmt.<span class="fn">Printf</span>(<span class="str">"About to call: %s\n"</span>, hookCtx.ToolName)
+            <span class="kw">return</span> <span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">interface</span>{}{<span class="str">"continue"</span>: <span class="kw">true</span>}, <span class="kw">nil</span>
+        },
+    },
+}
+
+options := types.<span class="fn">NewClaudeAgentOptions</span>().
+    <span class="fn">WithHook</span>(types.HookEventPreToolUse, preHook)</code></pre>
+                </div>
+
+                <hr>
+
+                <h2 id="permissions">Permission Handling</h2>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code><span class="kw">func</span> <span class="fn">checkPermissions</span>(ctx context.Context,
+    toolName <span class="kw">string</span>,
+    input <span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">interface</span>{},
+    permCtx types.ToolPermissionContext,
+) (<span class="kw">interface</span>{}, <span class="kw">error</span>) {
+    <span class="kw">if</span> toolName == <span class="str">"Bash"</span> {
+        cmd := input[<span class="str">"command"</span>].(<span class="kw">string</span>)
+        <span class="kw">if</span> strings.<span class="fn">Contains</span>(cmd, <span class="str">"rm -rf"</span>) {
+            <span class="kw">return</span> &types.PermissionResultDeny{
+                Behavior: <span class="str">"deny"</span>,
+                Message:  <span class="str">"Dangerous command blocked"</span>,
+            }, <span class="kw">nil</span>
+        }
+    }
+    <span class="kw">return</span> &types.PermissionResultAllow{Behavior: <span class="str">"allow"</span>}, <span class="kw">nil</span>
+}
+
+options := types.<span class="fn">NewClaudeAgentOptions</span>().
+    <span class="fn">WithCanUseTool</span>(checkPermissions)</code></pre>
+                </div>
+
+                <hr>
+
+                <h2 id="mcp">MCP Servers</h2>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code><span class="cmt">// Go: Factory function for MCP servers</span>
+calculator, _ := types.<span class="fn">NewSDKMCPServer</span>(<span class="str">"calculator"</span>,
+    types.Tool{
+        Name:        <span class="str">"add"</span>,
+        Description: <span class="str">"Add two numbers"</span>,
+        Handler: <span class="kw">func</span>(ctx context.Context, args <span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">any</span>) (<span class="kw">any</span>, <span class="kw">error</span>) {
+            a, _ := args[<span class="str">"a"</span>].(float64)
+            b, _ := args[<span class="str">"b"</span>].(float64)
+            <span class="kw">return</span> a + b, <span class="kw">nil</span>
+        },
+    },
+)
+
+options := types.<span class="fn">NewClaudeAgentOptions</span>().
+    <span class="fn">WithMCPServer</span>(<span class="str">"calculator"</span>, calculator)</code></pre>
+                </div>
+
+                <hr>
+
+                <h2 id="errors">Error Handling</h2>
+
+                <p>Python uses <code>try/except</code> with exception classes. Go uses <code>errors.As()</code> type assertions:</p>
+
+                <div class="code-block">
+                    <div class="code-header"><span class="code-lang">go</span></div>
+<pre><code>messages, err := sdk.<span class="fn">Query</span>(ctx, <span class="str">"Hello"</span>, <span class="kw">nil</span>)
+
+<span class="kw">var</span> permError *types.PermissionDeniedError
+<span class="kw">var</span> cliError *types.CLINotFoundError
+
+<span class="kw">if</span> errors.<span class="fn">As</span>(err, &permError) {
+    fmt.<span class="fn">Printf</span>(<span class="str">"Permission denied for %s\n"</span>, permError.ToolName)
+} <span class="kw">else if</span> errors.<span class="fn">As</span>(err, &cliError) {
+    fmt.<span class="fn">Printf</span>(<span class="str">"CLI not found: %s\n"</span>, cliError.Message)
+}
+
+<span class="cmt">// Or use helper predicates</span>
+<span class="kw">if</span> types.<span class="fn">IsPermissionDeniedError</span>(err) { <span class="cmt">/* ... */</span> }
+<span class="kw">if</span> types.<span class="fn">IsCLINotFoundError</span>(err) { <span class="cmt">/* ... */</span> }</code></pre>
+                </div>
+
+                <hr>
+
+                <h2 id="checklist">Migration Checklist</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Task</th><th>Python</th><th>Go</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Async functions</td><td><code>async def</code></td><td><code>func</code></td></tr>
+                        <tr><td>Await calls</td><td><code>await func()</code></td><td><code>&lt;-chan</code></td></tr>
+                        <tr><td>Async iteration</td><td><code>async for</code></td><td><code>for ... range</code></td></tr>
+                        <tr><td>Configuration</td><td><code>Options(key=val)</code></td><td><code>.WithKey(val)</code></td></tr>
+                        <tr><td>Error handling</td><td><code>except ErrorType</code></td><td><code>errors.As(err, &var)</code></td></tr>
+                        <tr><td>Hooks</td><td><code>@client.hook()</code></td><td><code>.WithHook(event, matcher)</code></td></tr>
+                        <tr><td>Callbacks</td><td>Async functions</td><td>Sync functions</td></tr>
+                        <tr><td>Context</td><td>Exception handling</td><td><code>context.Context</code></td></tr>
+                        <tr><td>Concurrency</td><td><code>asyncio.gather()</code></td><td>Goroutines + channels</td></tr>
+                        <tr><td>Install</td><td><code>pip install</code></td><td><code>go get</code></td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <h2>Performance Differences</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Aspect</th><th>Python</th><th>Go</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Startup</td><td>~100ms</td><td>~10ms</td></tr>
+                        <tr><td>Memory overhead</td><td>Higher</td><td>Lower</td></tr>
+                        <tr><td>Concurrency</td><td>Limited by GIL</td><td>1M+ goroutines</td></tr>
+                        <tr><td>Deployment</td><td>Runtime required</td><td>Single binary</td></tr>
+                        <tr><td>Dev speed</td><td>Faster prototyping</td><td>Slower but safer</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                <p><strong>Further reading:</strong> <a href="architecture.html">Architecture Differences</a> | <a href="features.html">Feature Parity</a></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span class="logo-icon">&#9670;</span>
+                    <span>claude-agent-sdk-go</span>
+                </div>
+                <div class="footer-right">
+                    <p>Community project &middot; Not affiliated with Anthropic &middot; MIT License</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/three-bg.js"></script>
+    <script>
+        document.querySelector('.nav-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+    </script>
+</body>
+</html>
