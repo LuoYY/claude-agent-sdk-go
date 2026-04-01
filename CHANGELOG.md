@@ -2,6 +2,26 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.7.0] - 2026-04-01
+
+### Added
+- 9 new Client control methods: `SetModel`, `Interrupt`, `SetPermissionMode`, `StopTask`, `RewindFiles`, `ReconnectMcpServer`, `ToggleMcpServer`, `GetMcpStatus`, `GetServerInfo`
+- `RateLimitEvent` and `RateLimitInfo` message types for rate limit monitoring
+- `AssistantMessageError` struct for error details on assistant messages
+- Missing fields on `AssistantMessage`: `Error`, `Usage`, `MessageID`, `StopReason`, `SessionID`, `UUID`
+- Missing fields on `ResultMessage`: `StopReason`, `StructuredOutput`, `ModelUsage`, `PermissionDenials`, `UUID`
+- Missing fields on `UserMessage`: `UUID`, `ToolUseResult`
+- `PermissionModeDontAsk` constant
+- CLI arg serialization for `AllowedTools`, `DisallowedTools`, `MaxTurns`, `AddDirs`, `Settings`, `McpServers`, `ContinueConversation`
+
+### Fixed
+- **Agents delivery**: Removed `--agents` CLI flag, agents now sent via `initialize` control protocol (matching Python/TypeScript SDK)
+- **Output format**: Changed `--output-format` to `--json-schema` to match Python SDK
+- **Thinking config**: Changed from full JSON `--thinking` to extracting budget as `--max-thinking-tokens` to match Python SDK
+- **File checkpointing**: Changed from CLI flag to `CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING` env var to match Python SDK
+- **Environment**: Filter `CLAUDECODE` env vars to prevent subprocess nesting bugs
+- **Entrypoint**: Changed from `"agent"` to `"sdk-go"` for proper SDK identification
+
 ## [0.6.1] - 2026-03-31
 
 ### Fixed
