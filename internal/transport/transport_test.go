@@ -1412,7 +1412,8 @@ func TestStderrFileLogging_DirectoryCreation(t *testing.T) {
 	}
 }
 
-// TestBuildCommandArgs_Agents tests agent configuration JSON serialization
+// TestBuildCommandArgs_Agents tests that agents are NOT passed as CLI flags
+// (they are sent via the initialize control protocol instead)
 func TestBuildCommandArgs_Agents(t *testing.T) {
 	t.Run("single agent with all fields", func(t *testing.T) {
 		mode := types.SubagentExecutionModeParallel
@@ -1431,67 +1432,14 @@ func TestBuildCommandArgs_Agents(t *testing.T) {
 				MaxTurns:      &maxTurns,
 			})
 
-		transport := NewSubprocessCLITransport(
-			"claude",
-			"",
-			nil,
-			log.NewLogger(false),
-			"",
-			opts,
-		)
-
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
 		args := transport.buildCommandArgs()
 
-		// Verify --agents flag is present
-		agentsIdx := -1
-		for i, arg := range args {
+		// Agents should NOT be in CLI args (sent via control protocol)
+		for _, arg := range args {
 			if arg == "--agents" {
-				agentsIdx = i
-				break
+				t.Fatal("--agents flag should NOT be present (agents are sent via initialize control protocol)")
 			}
-		}
-
-		if agentsIdx == -1 {
-			t.Fatal("--agents flag not found in command arguments")
-		}
-
-		if agentsIdx+1 >= len(args) {
-			t.Fatal("--agents flag has no value")
-		}
-
-		agentsJSON := args[agentsIdx+1]
-
-		// Verify JSON can be unmarshaled
-		var agentsData map[string]map[string]interface{}
-		if err := json.Unmarshal([]byte(agentsJSON), &agentsData); err != nil {
-			t.Fatalf("Failed to unmarshal agents JSON: %v", err)
-		}
-
-		// Verify agent exists
-		searchAgent, ok := agentsData["search"]
-		if !ok {
-			t.Fatal("Agent 'search' not found in JSON")
-		}
-
-		// Verify fields
-		if searchAgent["description"] != "Search agent" {
-			t.Errorf("Expected description 'Search agent', got %v", searchAgent["description"])
-		}
-
-		if searchAgent["prompt"] != "Search for information" {
-			t.Errorf("Expected prompt 'Search for information', got %v", searchAgent["prompt"])
-		}
-
-		if searchAgent["execution_mode"] != "parallel" {
-			t.Errorf("Expected execution_mode 'parallel', got %v", searchAgent["execution_mode"])
-		}
-
-		if searchAgent["timeout"] != 30.5 {
-			t.Errorf("Expected timeout 30.5, got %v", searchAgent["timeout"])
-		}
-
-		if maxTurnsVal, ok := searchAgent["max_turns"].(float64); !ok || maxTurnsVal != 5 {
-			t.Errorf("Expected max_turns 5, got %v", searchAgent["max_turns"])
 		}
 	})
 
@@ -1511,45 +1459,13 @@ func TestBuildCommandArgs_Agents(t *testing.T) {
 				ExecutionMode: &mode2,
 			})
 
-		transport := NewSubprocessCLITransport(
-			"claude",
-			"",
-			nil,
-			log.NewLogger(false),
-			"",
-			opts,
-		)
-
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
 		args := transport.buildCommandArgs()
 
-		agentsIdx := -1
-		for i, arg := range args {
+		for _, arg := range args {
 			if arg == "--agents" {
-				agentsIdx = i
-				break
+				t.Fatal("--agents flag should NOT be present (agents are sent via initialize control protocol)")
 			}
-		}
-
-		if agentsIdx == -1 {
-			t.Fatal("--agents flag not found")
-		}
-
-		agentsJSON := args[agentsIdx+1]
-		var agentsData map[string]map[string]interface{}
-		if err := json.Unmarshal([]byte(agentsJSON), &agentsData); err != nil {
-			t.Fatalf("Failed to unmarshal agents JSON: %v", err)
-		}
-
-		if len(agentsData) != 2 {
-			t.Errorf("Expected 2 agents, got %d", len(agentsData))
-		}
-
-		if agentsData["agent1"]["execution_mode"] != "sequential" {
-			t.Error("agent1 should have sequential execution mode")
-		}
-
-		if agentsData["agent2"]["execution_mode"] != "parallel" {
-			t.Error("agent2 should have parallel execution mode")
 		}
 	})
 
@@ -1560,72 +1476,22 @@ func TestBuildCommandArgs_Agents(t *testing.T) {
 				Prompt:      "Simple prompt",
 			})
 
-		transport := NewSubprocessCLITransport(
-			"claude",
-			"",
-			nil,
-			log.NewLogger(false),
-			"",
-			opts,
-		)
-
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
 		args := transport.buildCommandArgs()
 
-		agentsIdx := -1
-		for i, arg := range args {
+		for _, arg := range args {
 			if arg == "--agents" {
-				agentsIdx = i
-				break
+				t.Fatal("--agents flag should NOT be present (agents are sent via initialize control protocol)")
 			}
-		}
-
-		if agentsIdx == -1 {
-			t.Fatal("--agents flag not found")
-		}
-
-		agentsJSON := args[agentsIdx+1]
-		var agentsData map[string]map[string]interface{}
-		if err := json.Unmarshal([]byte(agentsJSON), &agentsData); err != nil {
-			t.Fatalf("Failed to unmarshal agents JSON: %v", err)
-		}
-
-		simpleAgent := agentsData["simple"]
-
-		// Verify required fields are present
-		if simpleAgent["description"] != "Simple agent" {
-			t.Error("description should be present")
-		}
-		if simpleAgent["prompt"] != "Simple prompt" {
-			t.Error("prompt should be present")
-		}
-
-		// Verify optional fields are absent (not in JSON)
-		if _, ok := simpleAgent["execution_mode"]; ok {
-			t.Error("execution_mode should not be in JSON when not set")
-		}
-		if _, ok := simpleAgent["timeout"]; ok {
-			t.Error("timeout should not be in JSON when not set")
-		}
-		if _, ok := simpleAgent["max_turns"]; ok {
-			t.Error("max_turns should not be in JSON when not set")
 		}
 	})
 
 	t.Run("no agents when not specified", func(t *testing.T) {
 		opts := types.NewClaudeAgentOptions()
 
-		transport := NewSubprocessCLITransport(
-			"claude",
-			"",
-			nil,
-			log.NewLogger(false),
-			"",
-			opts,
-		)
-
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
 		args := transport.buildCommandArgs()
 
-		// Verify --agents flag is not present
 		for _, arg := range args {
 			if arg == "--agents" {
 				t.Fatal("--agents flag should not be present when no agents are configured")
@@ -1760,7 +1626,7 @@ func TestBuildCommandArgs_SubagentExecution(t *testing.T) {
 	})
 }
 
-// TestBuildCommandArgs_AgentsWithSubagentExecution tests agents and subagent config together
+// TestBuildCommandArgs_AgentsWithSubagentExecution tests agents (via control protocol) and subagent config (via CLI)
 func TestBuildCommandArgs_AgentsWithSubagentExecution(t *testing.T) {
 	mode := types.SubagentExecutionModeParallel
 	subagentConfig := types.NewSubagentExecutionConfig()
@@ -1774,32 +1640,18 @@ func TestBuildCommandArgs_AgentsWithSubagentExecution(t *testing.T) {
 		}).
 		WithSubagentExecution(subagentConfig)
 
-	transport := NewSubprocessCLITransport(
-		"claude",
-		"",
-		nil,
-		log.NewLogger(false),
-		"",
-		opts,
-	)
-
+	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
 	args := transport.buildCommandArgs()
 
-	// Verify both flags are present
-	hasAgents := false
+	// Agents should NOT be in CLI args (sent via control protocol)
 	hasSubagentExecution := false
-
 	for _, arg := range args {
 		if arg == "--agents" {
-			hasAgents = true
+			t.Error("--agents flag should NOT be present (agents are sent via initialize control protocol)")
 		}
 		if arg == "--subagent-execution" {
 			hasSubagentExecution = true
 		}
-	}
-
-	if !hasAgents {
-		t.Error("--agents flag should be present")
 	}
 
 	if !hasSubagentExecution {
@@ -1808,58 +1660,56 @@ func TestBuildCommandArgs_AgentsWithSubagentExecution(t *testing.T) {
 }
 
 // TestBuildCommandArgs_ThinkingConfig tests thinking configuration serialization
+// Python SDK converts ThinkingConfig to --max-thinking-tokens (extracting budget)
 func TestBuildCommandArgs_ThinkingConfig(t *testing.T) {
-	tests := []struct {
-		name     string
-		thinking *types.ThinkingConfig
-		expected string // expected JSON substring in --thinking value
-	}{
-		{
-			name:     "adaptive thinking",
-			thinking: types.NewThinkingAdaptive(),
-			expected: `"type":"adaptive"`,
-		},
-		{
-			name:     "enabled thinking with budget",
-			thinking: types.NewThinkingEnabled(10000),
-			expected: `"budget_tokens":10000`,
-		},
-		{
-			name:     "disabled thinking",
-			thinking: types.NewThinkingDisabled(),
-			expected: `"type":"disabled"`,
-		},
-	}
+	t.Run("enabled thinking with budget", func(t *testing.T) {
+		opts := types.NewClaudeAgentOptions().
+			WithThinking(types.NewThinkingEnabled(10000))
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := types.NewClaudeAgentOptions().
-				WithThinking(tt.thinking)
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+		args := transport.buildCommandArgs()
 
-			transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
-			args := transport.buildCommandArgs()
-
-			found := false
-			for i, arg := range args {
-				if arg == "--thinking" && i+1 < len(args) {
-					found = true
-					if !containsSubstring(args[i+1], tt.expected) {
-						t.Errorf("--thinking value %q does not contain %q", args[i+1], tt.expected)
-					}
+		found := false
+		for i, arg := range args {
+			if arg == "--max-thinking-tokens" && i+1 < len(args) {
+				found = true
+				if args[i+1] != "10000" {
+					t.Errorf("expected --max-thinking-tokens 10000, got %s", args[i+1])
 				}
 			}
-			if !found {
-				t.Error("--thinking flag should be present")
-			}
+		}
+		if !found {
+			t.Error("--max-thinking-tokens flag should be present for enabled thinking")
+		}
+	})
 
-			// Should NOT have --max-thinking-tokens when Thinking is set
-			for _, arg := range args {
-				if arg == "--max-thinking-tokens" {
-					t.Error("--max-thinking-tokens should NOT be present when --thinking is set")
-				}
+	t.Run("adaptive thinking does not pass flag", func(t *testing.T) {
+		opts := types.NewClaudeAgentOptions().
+			WithThinking(types.NewThinkingAdaptive())
+
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+		args := transport.buildCommandArgs()
+
+		for _, arg := range args {
+			if arg == "--max-thinking-tokens" || arg == "--thinking" {
+				t.Error("no thinking flag should be present for adaptive mode")
 			}
-		})
-	}
+		}
+	})
+
+	t.Run("disabled thinking does not pass flag", func(t *testing.T) {
+		opts := types.NewClaudeAgentOptions().
+			WithThinking(types.NewThinkingDisabled())
+
+		transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
+		args := transport.buildCommandArgs()
+
+		for _, arg := range args {
+			if arg == "--max-thinking-tokens" || arg == "--thinking" {
+				t.Error("no thinking flag should be present for disabled mode")
+			}
+		}
+	})
 }
 
 // TestBuildCommandArgs_EffortLevel tests effort level serialization
@@ -1907,7 +1757,7 @@ func TestBuildCommandArgs_FallbackModel(t *testing.T) {
 	}
 }
 
-// TestBuildCommandArgs_OutputFormat tests output format serialization
+// TestBuildCommandArgs_OutputFormat tests output format serialization via --json-schema
 func TestBuildCommandArgs_OutputFormat(t *testing.T) {
 	format := map[string]interface{}{
 		"type": "json_schema",
@@ -1926,15 +1776,15 @@ func TestBuildCommandArgs_OutputFormat(t *testing.T) {
 
 	found := false
 	for i, arg := range args {
-		if arg == "--output-format" && i+1 < len(args) {
+		if arg == "--json-schema" && i+1 < len(args) {
 			found = true
 			if !containsSubstring(args[i+1], `"type":"json_schema"`) {
-				t.Errorf("--output-format value should contain json_schema type, got %q", args[i+1])
+				t.Errorf("--json-schema value should contain json_schema type, got %q", args[i+1])
 			}
 		}
 	}
 	if !found {
-		t.Error("--output-format flag should be present")
+		t.Error("--json-schema flag should be present")
 	}
 }
 
@@ -1964,7 +1814,8 @@ func TestBuildCommandArgs_Sandbox(t *testing.T) {
 	}
 }
 
-// TestBuildCommandArgs_EnableFileCheckpointing tests file checkpointing flag
+// TestBuildCommandArgs_EnableFileCheckpointing tests file checkpointing is NOT a CLI flag
+// (it's delivered via CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING env var in Connect())
 func TestBuildCommandArgs_EnableFileCheckpointing(t *testing.T) {
 	opts := types.NewClaudeAgentOptions().
 		WithEnableFileCheckpointing(true)
@@ -1972,14 +1823,11 @@ func TestBuildCommandArgs_EnableFileCheckpointing(t *testing.T) {
 	transport := NewSubprocessCLITransport("claude", "", nil, log.NewLogger(false), "", opts)
 	args := transport.buildCommandArgs()
 
-	found := false
+	// File checkpointing should NOT be a CLI flag (it's an env var)
 	for _, arg := range args {
 		if arg == "--enable-file-checkpointing" {
-			found = true
+			t.Error("--enable-file-checkpointing should NOT be a CLI flag (delivered via env var)")
 		}
-	}
-	if !found {
-		t.Error("--enable-file-checkpointing flag should be present")
 	}
 }
 
