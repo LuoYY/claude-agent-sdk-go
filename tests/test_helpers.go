@@ -80,8 +80,8 @@ done
 		}
 	}
 
-	// Write script
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
+	// Write script - needs execute permission to run as mock CLI
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil { // #nosec G306 -- executable script requires 0755
 		return nil, fmt.Errorf("failed to write mock script: %w", err)
 	}
 
@@ -122,7 +122,7 @@ func CreateMockCLIWithMessages(t *testing.T, messages []string) (*MockCLI, error
 		}
 	}
 
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
+	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil { // #nosec G306 -- executable script requires 0755
 		return nil, fmt.Errorf("failed to write mock script: %w", err)
 	}
 
@@ -246,8 +246,9 @@ func FindRealCLI(t *testing.T) string {
 
 	// Check if CLAUDE_CLI_PATH is set
 	if cliPath := os.Getenv("CLAUDE_CLI_PATH"); cliPath != "" {
-		if _, err := os.Stat(cliPath); err == nil {
-			return cliPath
+		cleanPath := filepath.Clean(cliPath)
+		if _, err := os.Stat(cleanPath); err == nil { // #nosec G703 -- path from trusted env var
+			return cleanPath
 		}
 	}
 
@@ -264,8 +265,9 @@ func FindRealCLI(t *testing.T) string {
 	}
 
 	for _, path := range commonPaths {
-		if _, err := os.Stat(path); err == nil {
-			return path
+		cleanPath := filepath.Clean(path)
+		if _, err := os.Stat(cleanPath); err == nil { // #nosec G703 -- paths are hardcoded known locations
+			return cleanPath
 		}
 	}
 

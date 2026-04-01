@@ -91,7 +91,7 @@ func (t *SubprocessCLITransport) Connect(ctx context.Context) error {
 	t.logger.Debug("Claude CLI command: %s %v", t.cliPath, args)
 
 	// Create command with arguments
-	t.cmd = exec.CommandContext(t.ctx, t.cliPath, args...)
+	t.cmd = exec.CommandContext(t.ctx, t.cliPath, args...) // #nosec G204 -- cliPath is validated via findCLI()
 
 	// Set working directory if provided
 	if t.cwd != "" {
@@ -644,7 +644,7 @@ func (t *SubprocessCLITransport) readStderr(ctx context.Context) {
 
 		// Create parent directory if it doesn't exist
 		logDir := filepath.Dir(logPath)
-		if err := os.MkdirAll(logDir, 0755); err != nil {
+		if err := os.MkdirAll(logDir, 0750); err != nil { // #nosec G301 -- log directory only needs owner+group access
 			fmt.Fprintf(os.Stderr,
 				"[SDK] Failed to create stderr log directory %s: %v\n"+
 					"Stderr file logging disabled. To fix, create directory:\n"+
@@ -653,7 +653,7 @@ func (t *SubprocessCLITransport) readStderr(ctx context.Context) {
 		} else {
 			// Try to open log file
 			var err error
-			logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600) // #nosec G302 G304 -- logPath is constructed from known safe paths
 			if err != nil {
 				fmt.Fprintf(os.Stderr,
 					"[SDK] Failed to open stderr log file %s: %v\n"+
