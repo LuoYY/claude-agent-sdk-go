@@ -74,3 +74,8 @@ jobs:
       with:
         version: latest
         args: --timeout=5m
+
+    - name: Security scan (gosec)
+      uses: securego/gosec@master
+      with:
+        args: ./...
