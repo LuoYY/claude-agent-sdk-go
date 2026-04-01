@@ -8,7 +8,7 @@
 
     // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
+    scene.background = new THREE.Color(0x0d1117);
 
     const camera = new THREE.PerspectiveCamera(
         60,
@@ -87,7 +87,7 @@
                 if (dist > 0.5) discard;
 
                 float alpha = smoothstep(0.5, 0.1, dist) * vOpacity;
-                gl_FragColor = vec4(0.75, 0.77, 0.80, alpha);
+                gl_FragColor = vec4(0.35, 0.40, 0.50, alpha);
             }
         `,
         transparent: true,
@@ -142,9 +142,9 @@
     // Floating geometric shapes (very subtle)
     const shapes = [];
     const shapeMaterial = new THREE.MeshBasicMaterial({
-        color: 0xd4d4d4,
+        color: 0x30363d,
         transparent: true,
-        opacity: 0.06,
+        opacity: 0.3,
         wireframe: true,
     });
 
@@ -247,9 +247,8 @@
                     lp[li + 4] = pos[j * 3 + 1];
                     lp[li + 5] = pos[j * 3 + 2];
 
-                    // Light gray color with calculated alpha
-                    lc[ci] = 0.75;     lc[ci + 1] = 0.77;  lc[ci + 2] = 0.8;   lc[ci + 3] = alpha;
-                    lc[ci + 4] = 0.75; lc[ci + 5] = 0.77;  lc[ci + 6] = 0.8;   lc[ci + 7] = alpha;
+                    lc[ci] = 0.35;     lc[ci + 1] = 0.40;  lc[ci + 2] = 0.50;   lc[ci + 3] = alpha;
+                    lc[ci + 4] = 0.35; lc[ci + 5] = 0.40;  lc[ci + 6] = 0.50;   lc[ci + 7] = alpha;
 
                     lineIndex++;
                 }
