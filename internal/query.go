@@ -788,6 +788,45 @@ func (q *Query) GetServerInfo(ctx context.Context) (map[string]interface{}, erro
 	return q.sendControlRequest(ctx, request)
 }
 
+// GetContextUsage queries the current context window usage by category.
+//
+// Returns the same data shown by the `/context` command in the CLI,
+// including token counts per category, total usage, and detailed
+// breakdowns of MCP tools, memory files, and agents.
+//
+// Example:
+//
+//	usage, err := client.GetContextUsage(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Using %.1f%% of context\n", usage.Percentage)
+//	for _, cat := range usage.Categories {
+//	    fmt.Printf("  %s: %d tokens\n", cat.Name, cat.Tokens)
+//	}
+func (q *Query) GetContextUsage(ctx context.Context) (*types.ContextUsageResponse, error) {
+	request := map[string]interface{}{
+		"subtype": "get_context_usage",
+	}
+	result, err := q.sendControlRequest(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Marshal the result back to JSON for proper unmarshaling
+	data, err := json.Marshal(result)
+	if err != nil {
+		return nil, types.NewControlProtocolErrorWithCause("failed to marshal context usage response", err)
+	}
+
+	var usage types.ContextUsageResponse
+	if err := json.Unmarshal(data, &usage); err != nil {
+		return nil, types.NewControlProtocolErrorWithCause("failed to unmarshal context usage response", err)
+	}
+
+	return &usage, nil
+}
+
 // AddMCPServer adds an MCP server for handling MCP messages.
 func (q *Query) AddMCPServer(name string, server types.MCPServer) {
 	q.mu.Lock()

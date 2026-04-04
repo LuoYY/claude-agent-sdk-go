@@ -571,6 +571,39 @@ func (c *Client) GetServerInfo(ctx context.Context) (map[string]interface{}, err
 	return c.query.GetServerInfo(ctx)
 }
 
+// GetContextUsage queries the current context window usage by category.
+//
+// Returns the same data shown by the `/context` command in the CLI,
+// including token counts per category, total usage, and detailed
+// breakdowns of MCP tools, memory files, and agents.
+//
+// Returns:
+//   - ContextUsageResponse with usage breakdown
+//   - An error if the client is not connected or the request fails
+//
+// Example:
+//
+//	usage, err := client.GetContextUsage(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Using %.1f%% of context\n", usage.Percentage)
+//	for _, cat := range usage.Categories {
+//	    fmt.Printf("  %s: %d tokens\n", cat.Name, cat.Tokens)
+//	}
+//	if len(usage.MemoryFiles) > 0 {
+//	    fmt.Println("Memory files:")
+//	    for _, mf := range usage.MemoryFiles {
+//	        fmt.Printf("  %s: %v tokens\n", mf["path"], mf["tokens"])
+//	    }
+//	}
+func (c *Client) GetContextUsage(ctx context.Context) (*types.ContextUsageResponse, error) {
+	if c.query == nil {
+		return nil, types.NewControlProtocolError("client not connected")
+	}
+	return c.query.GetContextUsage(ctx)
+}
+
 // IsConnected returns true if the client is currently connected to Claude.
 //
 // This can be used to check connection state before calling methods that require

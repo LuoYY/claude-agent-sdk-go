@@ -354,6 +354,33 @@ func TestClient_MultipleQueries(t *testing.T) {
 	}
 }
 
+func TestClient_GetContextUsage_NotConnected(t *testing.T) {
+	ctx := context.Background()
+	opts := types.NewClaudeAgentOptions().WithCLIPath("/bin/echo")
+
+	client, err := NewClient(ctx, opts)
+	if err != nil {
+		t.Skip("Could not create client")
+	}
+	defer func() {
+		_ = client.Close(ctx)
+	}()
+
+	// Try to get context usage without connecting
+	usage, err := client.GetContextUsage(ctx)
+	if err == nil {
+		t.Fatal("expected error when GetContextUsage is called without connecting")
+	}
+
+	if !types.IsControlProtocolError(err) {
+		t.Errorf("expected ControlProtocolError, got: %T - %v", err, err)
+	}
+
+	if usage != nil {
+		t.Error("expected nil usage when error occurs")
+	}
+}
+
 // BenchmarkClient benchmarks the Client type
 func BenchmarkClient_Create(b *testing.B) {
 	ctx := context.Background()

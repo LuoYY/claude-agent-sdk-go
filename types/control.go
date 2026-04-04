@@ -384,3 +384,73 @@ type MCPServer interface {
 	// Version returns the server version.
 	Version() string
 }
+
+// ContextUsageCategory represents a single context usage category
+// (system prompt, tools, messages, etc.).
+type ContextUsageCategory struct {
+	Name       string `json:"name"`
+	Tokens     int    `json:"tokens"`
+	Color      string `json:"color"`
+	IsDeferred *bool  `json:"isDeferred,omitempty"`
+}
+
+// ContextUsageResponse provides a breakdown of current context window usage by category,
+// matching the data shown by the `/context` command in the CLI.
+type ContextUsageResponse struct {
+	// Categories is token usage broken down by category (system prompt, tools, messages, etc.)
+	Categories []ContextUsageCategory `json:"categories"`
+
+	// TotalTokens is total tokens currently in the context window
+	TotalTokens int `json:"totalTokens"`
+
+	// MaxTokens is effective maximum tokens (may be reduced by autocompact buffer)
+	MaxTokens int `json:"maxTokens"`
+
+	// RawMaxTokens is the raw model context window size
+	RawMaxTokens int `json:"rawMaxTokens"`
+
+	// Percentage is percentage of context window used (0-100)
+	Percentage float64 `json:"percentage"`
+
+	// Model is model name the context usage is calculated for
+	Model string `json:"model"`
+
+	// IsAutoCompactEnabled is whether autocompact is enabled for this session
+	IsAutoCompactEnabled bool `json:"isAutoCompactEnabled"`
+
+	// MemoryFiles are CLAUDE.md and memory files loaded, with path, type, and token counts
+	MemoryFiles []map[string]interface{} `json:"memoryFiles,omitempty"`
+
+	// MCPTools are MCP tools with name, serverName, tokens, and isLoaded status
+	MCPTools []map[string]interface{} `json:"mcpTools,omitempty"`
+
+	// Agents are agent definitions with agentType, source, and token counts
+	Agents []map[string]interface{} `json:"agents,omitempty"`
+
+	// GridRows is visual grid representation used by the CLI context display
+	GridRows [][]map[string]interface{} `json:"gridRows,omitempty"`
+
+	// AutoCompactThreshold is the token threshold at which autocompact triggers
+	AutoCompactThreshold *int `json:"autoCompactThreshold,omitempty"`
+
+	// DeferredBuiltinTools are built-in tools deferred from the initial tool list
+	DeferredBuiltinTools []map[string]interface{} `json:"deferredBuiltinTools,omitempty"`
+
+	// SystemTools are system (built-in) tools with name and token counts
+	SystemTools []map[string]interface{} `json:"systemTools,omitempty"`
+
+	// SystemPromptSections are system prompt sections with name and token counts
+	SystemPromptSections []map[string]interface{} `json:"systemPromptSections,omitempty"`
+
+	// SlashCommands is slash command usage summary
+	SlashCommands map[string]interface{} `json:"slashCommands,omitempty"`
+
+	// Skills is skill usage summary with frontmatter breakdown
+	Skills map[string]interface{} `json:"skills,omitempty"`
+
+	// MessageBreakdown is detailed breakdown of message tokens by type (tool calls, results, etc.)
+	MessageBreakdown map[string]interface{} `json:"messageBreakdown,omitempty"`
+
+	// APIUsage is cumulative API usage for the session
+	APIUsage map[string]interface{} `json:"apiUsage,omitempty"`
+}
