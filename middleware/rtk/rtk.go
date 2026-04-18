@@ -63,8 +63,17 @@ func WithBinary(path string) Option {
 
 // WithCommands replaces the default allow-list with the supplied commands.
 // Commands are matched on their basename (e.g. "git", not "/usr/bin/git").
+//
+// Calling WithCommands with no arguments is treated as a no-op rather
+// than silently wiping the allow-list, to avoid the footgun of
+// accidentally disabling rtk entirely. If you really do want to start
+// from an empty allow-list and add commands with WithAddedCommands, call
+// WithCommands with an explicit empty slice: WithCommands([]string{}...).
 func WithCommands(cmds ...string) Option {
 	return func(c *config) {
+		if cmds == nil {
+			return
+		}
 		c.commands = toSet(cmds)
 	}
 }
@@ -164,9 +173,9 @@ func (c *config) callback(_ context.Context, input interface{}, _ *string, _ typ
 		return passthrough(), nil
 	}
 
-	newInput := make(map[string]interface{}, len(toolInput))
-	for k, v := range toolInput {
-		newInput[k] = v
+	newInput := cloneInput(toolInput)
+	if newInput == nil {
+		newInput = map[string]interface{}{}
 	}
 	newInput["command"] = rewritten
 

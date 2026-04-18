@@ -66,10 +66,41 @@ func TestRewrite_Blocked(t *testing.T) {
 }
 
 func TestRewrite_AddedCommands(t *testing.T) {
-	cfg := newCfg(WithCommands(), WithAddedCommands("make"))
+	cfg := newCfg(WithAddedCommands("make"))
 	got, changed := cfg.rewrite("make build")
 	if !changed || got != "rtk make build" {
 		t.Fatalf("added command not wrapped: %q", got)
+	}
+}
+
+func TestWithCommands_NoArgsIsNoop(t *testing.T) {
+	// Passing zero variadic args must NOT wipe the default allow-list,
+	// otherwise rtk.Hook(rtk.WithCommands()) would be a silent footgun
+	// that disables the middleware entirely.
+	cfg := newCfg(WithCommands())
+	got, changed := cfg.rewrite("git status")
+	if !changed || got != "rtk git status" {
+		t.Fatalf("WithCommands() wiped the allow-list: changed=%v got=%q", changed, got)
+	}
+}
+
+func TestWithCommands_ExplicitEmptySliceWipes(t *testing.T) {
+	// Explicitly passing an empty (non-nil) slice is the documented way
+	// to request a fresh allow-list.
+	cfg := newCfg(WithCommands([]string{}...))
+	if _, changed := cfg.rewrite("git status"); changed {
+		t.Fatalf("explicit empty slice should wipe allow-list")
+	}
+}
+
+func TestWithCommands_ReplaceSet(t *testing.T) {
+	cfg := newCfg(WithCommands("only-this"))
+	if _, changed := cfg.rewrite("git status"); changed {
+		t.Fatalf("git should not be wrapped after WithCommands replace")
+	}
+	got, changed := cfg.rewrite("only-this now")
+	if !changed || got != "rtk only-this now" {
+		t.Fatalf("replacement command not wrapped: %q", got)
 	}
 }
 
@@ -124,6 +155,123 @@ func TestRewrite_EnvAssignmentsAndSudo(t *testing.T) {
 		got, _ := cfg.rewrite(tc.in)
 		if got != tc.want {
 			t.Errorf("rewrite(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestRewrite_WrapperFlagsWithValues(t *testing.T) {
+	cfg := newCfg()
+	cases := []struct{ in, want string }{
+		// sudo -u <user>: the user argument is a flag value, not the program.
+		{"sudo -u deploy git status", "sudo -u deploy rtk git status"},
+		// nice -n <prio>: same pattern.
+		{"nice -n 10 git status", "nice -n 10 rtk git status"},
+		// env with its own flags and an env-assignment before the command.
+		{"env -i PATH=/bin git status", "env -i PATH=/bin rtk git status"},
+		// Multiple flags, some with values.
+		{"sudo -E -u deploy -H git status", "sudo -E -u deploy -H rtk git status"},
+		// Wrapper + flag landing on a non-allow-listed program -> passthrough.
+		{"sudo -u deploy rm -rf /", "sudo -u deploy rm -rf /"},
+	}
+	for _, tc := range cases {
+		got, _ := cfg.rewrite(tc.in)
+		if got != tc.want {
+			t.Errorf("rewrite(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestRewrite_BareCommandArgumentsNotSwallowed(t *testing.T) {
+	// Without a wrapper, a flag followed by a non-flag MUST NOT be
+	// treated as a flag value; otherwise "echo git" would be rewritten
+	// as "echo rtk git" (wrong — git is echo's argument, not a program).
+	cfg := newCfg()
+	if _, changed := cfg.rewrite("echo git"); changed {
+		t.Fatalf("bare 'echo git' must not be rewritten")
+	}
+	if _, changed := cfg.rewrite("echo -v git"); changed {
+		t.Fatalf("'echo -v git' must not be rewritten")
+	}
+}
+
+func TestRewrite_SubshellsAndParens(t *testing.T) {
+	cfg := newCfg()
+	cases := []struct{ in, want string }{
+		// A subshell groups commands; operators inside must not split the
+		// outer command, but the subshell body is left alone (we cannot
+		// safely rewrite inside parens without shell semantics).
+		{"(cd foo && git status)", "(cd foo && git status)"},
+		// Pipe OUTSIDE the subshell is a top-level separator.
+		{"(cd foo && git status) | head", "(cd foo && git status) | rtk head"},
+		// Multiple top-level commands with a subshell in one of them.
+		{"(cd a && npm test) && git status", "(cd a && npm test) && rtk git status"},
+	}
+	for _, tc := range cases {
+		got, _ := cfg.rewrite(tc.in)
+		if got != tc.want {
+			t.Errorf("rewrite(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestRewrite_CommandSubstitution(t *testing.T) {
+	cfg := newCfg()
+	cases := []struct{ in, want string }{
+		// $(...) — pipes inside the substitution must NOT split the
+		// outer command, and the substitution body itself is left alone.
+		{"git log --format=$(date +%s)", "rtk git log --format=$(date +%s)"},
+		{"echo $(git log | head) && git status", "echo $(git log | head) && rtk git status"},
+		// Backtick substitution gets the same treatment.
+		{"echo `git log | head` && git status", "echo `git log | head` && rtk git status"},
+		// Nested substitution.
+		{"echo $(git log $(date +%s)) && npm test", "echo $(git log $(date +%s)) && rtk npm test"},
+	}
+	for _, tc := range cases {
+		got, _ := cfg.rewrite(tc.in)
+		if got != tc.want {
+			t.Errorf("rewrite(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestRewrite_RedirectionsAndBackground(t *testing.T) {
+	cfg := newCfg()
+	cases := []struct{ in, want string }{
+		{"git status 2>&1", "rtk git status 2>&1"},
+		{"git status > /tmp/out", "rtk git status > /tmp/out"},
+		{"git status &", "rtk git status &"},
+	}
+	for _, tc := range cases {
+		got, _ := cfg.rewrite(tc.in)
+		if got != tc.want {
+			t.Errorf("rewrite(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestSplitSegments_RoundTripFidelity(t *testing.T) {
+	// Whatever we parse should round-trip to the exact original string
+	// when no rewriting happens — this guards against subtle byte-loss
+	// bugs in splitSegments / joinSegments.
+	cases := []string{
+		"git status",
+		"git status | head",
+		"git status | head -n 20",
+		"cd foo && git status; npm test || false",
+		`git commit -m "fix && tidy"`,
+		`git commit -m 'fix || tidy'`,
+		"(cd foo && git status) | head",
+		"echo $(git log | head) && git status",
+		"echo `git log` && git status",
+		"git log --format=$(date +%s)",
+		"git status 2>&1",
+		"git status &",
+	}
+	for _, in := range cases {
+		segs, seps := splitSegments(in)
+		got := joinSegments(segs, seps)
+		if got != in {
+			t.Errorf("round-trip failed:\n in:  %q\n out: %q", in, got)
 		}
 	}
 }
