@@ -508,6 +508,41 @@ See `examples/` directory for complete, runnable examples:
   cd examples/with_hooks && go run main.go
   ```
 
+- **`examples/with_rtk/main.go`** - Reduce token usage with the RTK CLI proxy (`middleware/rtk`)
+  ```bash
+  cd examples/with_rtk && go run main.go
+  ```
+
+## Middleware
+
+Optional, opt-in packages under `middleware/` that implement common hook
+patterns so you don't have to write them yourself.
+
+### `middleware/rtk` — token-saving Bash wrapper
+
+[RTK](https://github.com/rtk-ai/rtk) is a CLI proxy that compresses the
+output of noisy commands (`git`, `npm`, `cargo`, `kubectl`, `pytest`, …)
+by 60-90% before it reaches the LLM. The middleware installs a
+`PreToolUse` hook that rewrites `git status` → `rtk git status`
+transparently. The agent sees the compressed output; nothing else changes.
+
+```go
+import (
+    "github.com/schlunsen/claude-agent-sdk-go/types"
+    "github.com/schlunsen/claude-agent-sdk-go/middleware/rtk"
+)
+
+opts := types.NewClaudeAgentOptions().
+    WithHook(types.HookEventPreToolUse, rtk.Hook(
+        rtk.WithUltraCompact(true), // pass "-u" to rtk
+        rtk.OnlyIfInstalled(),      // no-op if rtk is not on PATH
+    ))
+```
+
+Only the `Bash` tool is affected; built-in `Read` / `Grep` / `Glob`
+bypass the hook. See `middleware/rtk/doc.go` for all options
+(`WithCommands`, `WithAddedCommands`, `WithBlocked`, `WithBinary`).
+
 ## Development
 
 ### Prerequisites
