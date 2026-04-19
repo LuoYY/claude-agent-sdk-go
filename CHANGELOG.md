@@ -2,15 +2,25 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
-## [Unreleased]
+## [0.8.0] - 2026-04-19
 
 ### Added
 - `middleware/rtk` package: optional `PreToolUse` hook that wraps Bash
   commands with the [RTK](https://github.com/rtk-ai/rtk) CLI proxy to
   compress command output by 60-90% before it reaches the model.
-  Supports `WithBinary`, `WithCommands`, `WithAddedCommands`,
-  `WithBlocked`, `WithUltraCompact`, and `OnlyIfInstalled` options.
+  - Options: `WithBinary`, `WithCommands` (zero-args is a safe no-op,
+    not a wipe), `WithAddedCommands`, `WithBlocked`, `WithUltraCompact`,
+    `OnlyIfInstalled` (graceful degradation when rtk isn't on PATH).
+  - Shell-aware rewriter tracks quotes, escapes, backticks, and
+    parenthesis depth (incl. `$(...)` command substitution and
+    subshells), so operators inside nested contexts do not split.
+  - Wrapper-flag-value heuristic handles `sudo -u deploy git …`,
+    `nice -n 10 git …`, `env -i PATH=/bin git …` correctly while
+    refusing to swallow arguments of bare commands like `echo git`.
+  - 27 unit tests incl. lossless segment round-trip fidelity.
 - `examples/with_rtk/main.go` demonstrating RTK middleware usage.
+- New **Middleware** section in README documenting the extensibility
+  pattern and the `middleware/rtk` subpackage.
 
 ## [0.7.0] - 2026-04-01
 
