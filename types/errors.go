@@ -5,6 +5,38 @@ import (
 	"fmt"
 )
 
+// ClaudeSDKError is the base error type for all SDK errors.
+// It can be used with errors.As to check if any error originated from the SDK.
+type ClaudeSDKError struct {
+	Message string
+	Cause   error
+}
+
+// Error returns the error message, implementing the error interface.
+func (e *ClaudeSDKError) Error() string {
+	if e.Cause != nil {
+		return e.Message + ": " + e.Cause.Error()
+	}
+	return e.Message
+}
+
+// Is checks if the target error is a ClaudeSDKError.
+func (e *ClaudeSDKError) Is(target error) bool {
+	_, ok := target.(*ClaudeSDKError)
+	return ok
+}
+
+// Unwrap returns the wrapped error.
+func (e *ClaudeSDKError) Unwrap() error {
+	return e.Cause
+}
+
+// IsClaudeSDKError checks if an error is or wraps a ClaudeSDKError.
+func IsClaudeSDKError(err error) bool {
+	var e *ClaudeSDKError
+	return errors.As(err, &e)
+}
+
 // CLINotFoundError indicates that the Claude Code CLI binary could not be found.
 // This typically occurs when the CLI is not installed or not in PATH.
 type CLINotFoundError struct {

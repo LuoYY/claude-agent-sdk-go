@@ -11,6 +11,7 @@ const (
 	PermissionModePlan              PermissionMode = "plan"
 	PermissionModeBypassPermissions PermissionMode = "bypassPermissions"
 	PermissionModeDontAsk           PermissionMode = "dontAsk"
+	PermissionModeAuto              PermissionMode = "auto"
 )
 
 // PermissionBehavior represents the behavior for a permission rule.

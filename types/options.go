@@ -65,9 +65,10 @@ func NewSubagentExecutionConfig() *SubagentExecutionConfig {
 
 // SystemPromptPreset represents a preset system prompt configuration.
 type SystemPromptPreset struct {
-	Type   string  `json:"type"`   // "preset"
-	Preset string  `json:"preset"` // "claude_code"
-	Append *string `json:"append,omitempty"`
+	Type                   string  `json:"type"`   // "preset"
+	Preset                 string  `json:"preset"` // "claude_code"
+	Append                 *string `json:"append,omitempty"`
+	ExcludeDynamicSections *bool   `json:"exclude_dynamic_sections,omitempty"` // Strip per-user dynamic sections for cross-user prompt caching
 }
 
 // SystemPromptFile represents a file-based system prompt configuration.
@@ -76,11 +77,22 @@ type SystemPromptFile struct {
 	Path string `json:"path"` // Path to file containing system prompt
 }
 
+// ThinkingDisplay controls how thinking text is returned in responses.
+type ThinkingDisplay string
+
+const (
+	// ThinkingDisplaySummarized returns a summary of Claude's thinking.
+	ThinkingDisplaySummarized ThinkingDisplay = "summarized"
+	// ThinkingDisplayOmitted omits thinking text entirely from responses.
+	ThinkingDisplayOmitted ThinkingDisplay = "omitted"
+)
+
 // ThinkingConfig represents extended thinking configuration.
 // Use one of the constructor functions: NewThinkingAdaptive, NewThinkingEnabled, NewThinkingDisabled.
 type ThinkingConfig struct {
-	Type         string `json:"type"`                    // "adaptive", "enabled", "disabled"
-	BudgetTokens *int   `json:"budget_tokens,omitempty"` // Required when Type is "enabled"
+	Type         string           `json:"type"`                    // "adaptive", "enabled", "disabled"
+	BudgetTokens *int             `json:"budget_tokens,omitempty"` // Required when Type is "enabled"
+	Display      *ThinkingDisplay `json:"display,omitempty"`       // Controls thinking text display: "summarized" or "omitted"
 }
 
 // NewThinkingAdaptive creates an adaptive thinking configuration.
@@ -106,29 +118,58 @@ const (
 	EffortLow    EffortLevel = "low"
 	EffortMedium EffortLevel = "medium"
 	EffortHigh   EffortLevel = "high"
+	EffortXHigh  EffortLevel = "xhigh"
 	EffortMax    EffortLevel = "max"
 )
 
+// SandboxNetworkConfig represents network configuration for sandbox environments.
+type SandboxNetworkConfig struct {
+	AllowedDomains          []string `json:"allowedDomains,omitempty"`          // Domain names allowed for network access
+	DeniedDomains           []string `json:"deniedDomains,omitempty"`           // Domains that are always blocked
+	AllowManagedDomainsOnly *bool    `json:"allowManagedDomainsOnly,omitempty"` // Only allow managed domain settings
+	AllowUnixSockets        []string `json:"allowUnixSockets,omitempty"`        // Allowed Unix socket paths
+	AllowAllUnixSockets     *bool    `json:"allowAllUnixSockets,omitempty"`     // Allow all Unix socket connections
+	AllowLocalBinding       *bool    `json:"allowLocalBinding,omitempty"`       // Allow local port binding (macOS only)
+	AllowMachLookup         []string `json:"allowMachLookup,omitempty"`         // Allowed XPC/Mach service names (macOS only)
+	HTTPProxyPort           *int     `json:"httpProxyPort,omitempty"`           // HTTP proxy port
+	SOCKSProxyPort          *int     `json:"socksProxyPort,omitempty"`          // SOCKS5 proxy port
+}
+
+// SandboxIgnoreViolations specifies sandbox violations to ignore.
+type SandboxIgnoreViolations struct {
+	Files   []string `json:"files,omitempty"`   // File paths to ignore violations for
+	Network []string `json:"network,omitempty"` // Network hosts/domains to ignore violations for
+}
+
 // SandboxSettings represents Bash sandbox configuration.
 type SandboxSettings struct {
-	Type    string            `json:"type"`              // Sandbox type (e.g., "docker", "local")
-	Image   *string           `json:"image,omitempty"`   // Container image (for docker type)
-	Volumes []string          `json:"volumes,omitempty"` // Volume mounts
-	Env     map[string]string `json:"env,omitempty"`     // Environment variables for sandbox
+	Type                     string                   `json:"type"`                               // Sandbox type (e.g., "docker", "local")
+	Enabled                  *bool                    `json:"enabled,omitempty"`                  // Toggle sandboxing on/off
+	Image                    *string                  `json:"image,omitempty"`                    // Container image (for docker type)
+	Volumes                  []string                 `json:"volumes,omitempty"`                  // Volume mounts
+	Env                      map[string]string        `json:"env,omitempty"`                      // Environment variables for sandbox
+	AutoAllowBashIfSandboxed *bool                    `json:"autoAllowBashIfSandboxed,omitempty"` // Auto-approve sandboxed Bash commands
+	ExcludedCommands         []string                 `json:"excludedCommands,omitempty"`         // Commands that bypass sandbox
+	Network                  *SandboxNetworkConfig    `json:"network,omitempty"`                  // Network access configuration
+	IgnoreViolations         *SandboxIgnoreViolations `json:"ignoreViolations,omitempty"`         // Violations to ignore
 }
 
 // AgentDefinition represents a custom agent definition.
 type AgentDefinition struct {
-	Description   string                 `json:"description"`
-	Prompt        string                 `json:"prompt"`
-	Tools         []string               `json:"tools,omitempty"`
-	Skills        []string               `json:"skills,omitempty"`         // List of skill names available to this agent
-	Model         *string                `json:"model,omitempty"`          // "sonnet", "opus", "haiku", "inherit"
-	Memory        *string                `json:"memory,omitempty"`         // "user", "project", "local"
-	McpServers    []interface{}          `json:"mcpServers,omitempty"`     // List of MCP server names (string) or configs (map)
-	ExecutionMode *SubagentExecutionMode `json:"execution_mode,omitempty"` // How this agent executes relative to others
-	Timeout       *float64               `json:"timeout,omitempty"`        // Maximum seconds to wait for agent response
-	MaxTurns      *int                   `json:"max_turns,omitempty"`      // Maximum conversation turns for this agent
+	Description    string                 `json:"description"`
+	Prompt         string                 `json:"prompt"`
+	Tools          []string               `json:"tools,omitempty"`
+	Skills         []string               `json:"skills,omitempty"`         // List of skill names available to this agent
+	Model          *string                `json:"model,omitempty"`          // "sonnet", "opus", "haiku", "inherit"
+	Memory         *string                `json:"memory,omitempty"`         // "user", "project", "local"
+	McpServers     []interface{}          `json:"mcpServers,omitempty"`     // List of MCP server names (string) or configs (map)
+	ExecutionMode  *SubagentExecutionMode `json:"execution_mode,omitempty"` // How this agent executes relative to others
+	Timeout        *float64               `json:"timeout,omitempty"`        // Maximum seconds to wait for agent response
+	MaxTurns       *int                   `json:"max_turns,omitempty"`      // Maximum conversation turns for this agent
+	InitialPrompt  *string                `json:"initialPrompt,omitempty"`  // Initial prompt sent when agent starts
+	Background     *bool                  `json:"background,omitempty"`     // Whether agent runs in background
+	Effort         *EffortLevel           `json:"effort,omitempty"`         // Thinking effort level for this agent
+	PermissionMode *PermissionMode        `json:"permissionMode,omitempty"` // Permission mode for this agent
 }
 
 // PluginConfig represents a Claude Code plugin configuration.
@@ -288,6 +329,18 @@ type ClaudeAgentOptions struct {
 
 	// Sandbox configuration for Bash tool
 	Sandbox *SandboxSettings `json:"sandbox,omitempty"`
+
+	// Task budget configuration for token-aware execution
+	TaskBudget *TaskBudget `json:"task_budget,omitempty"`
+
+	// Skills to enable for the main session ("all" or specific skill names)
+	Skills interface{} `json:"skills,omitempty"` // Can be []string or "all"
+
+	// Include hook lifecycle events in message stream (for debugging hooks)
+	IncludeHookEvents bool `json:"include_hook_events,omitempty"`
+
+	// Strict MCP config - when true, ignores CLI's default MCP configuration
+	StrictMcpConfig bool `json:"strict_mcp_config,omitempty"`
 
 	// Structured output format (JSON schema for constraining output)
 	OutputFormat map[string]interface{} `json:"output_format,omitempty"`
@@ -671,5 +724,42 @@ func (o *ClaudeAgentOptions) WithDangerouslySkipPermissions(skip bool) *ClaudeAg
 // This is the "safety switch" that allows the dangerous flag to work.
 func (o *ClaudeAgentOptions) WithAllowDangerouslySkipPermissions(allow bool) *ClaudeAgentOptions {
 	o.AllowDangerouslySkipPermissions = allow
+	return o
+}
+
+// WithTaskBudget sets the task budget for token-aware execution.
+func (o *ClaudeAgentOptions) WithTaskBudget(budget *TaskBudget) *ClaudeAgentOptions {
+	o.TaskBudget = budget
+	return o
+}
+
+// WithSkills sets the skills to enable for the main session.
+// Pass "all" as a string to enable all skills, or a []string with specific skill names.
+func (o *ClaudeAgentOptions) WithSkills(skills interface{}) *ClaudeAgentOptions {
+	o.Skills = skills
+	return o
+}
+
+// WithIncludeHookEvents enables hook lifecycle events in the message stream.
+// This is useful for debugging hook execution.
+func (o *ClaudeAgentOptions) WithIncludeHookEvents(include bool) *ClaudeAgentOptions {
+	o.IncludeHookEvents = include
+	return o
+}
+
+// WithStrictMcpConfig ignores the CLI's default MCP configuration.
+// When true, only the MCP servers explicitly configured via WithMcpServers are used.
+func (o *ClaudeAgentOptions) WithStrictMcpConfig(strict bool) *ClaudeAgentOptions {
+	o.StrictMcpConfig = strict
+	return o
+}
+
+// WithThinkingDisplay sets the display mode for thinking content.
+// Use ThinkingDisplaySummarized or ThinkingDisplayOmitted.
+func (o *ClaudeAgentOptions) WithThinkingDisplay(display ThinkingDisplay) *ClaudeAgentOptions {
+	if o.Thinking == nil {
+		o.Thinking = NewThinkingAdaptive()
+	}
+	o.Thinking.Display = &display
 	return o
 }

@@ -498,6 +498,34 @@ func (t *SubprocessCLITransport) buildCommandArgs() []string {
 		t.logger.Debug("Setting sources: %s", joinStrings(sources, ","))
 	}
 
+	// Add include hook events flag if enabled
+	if t.options != nil && t.options.IncludeHookEvents {
+		args = append(args, "--include-hook-events")
+		t.logger.Debug("Including hook events in message stream")
+	}
+
+	// Add strict MCP config flag
+	if t.options != nil && t.options.StrictMcpConfig {
+		args = append(args, "--strict-mcp-config")
+		t.logger.Debug("Using strict MCP config (ignoring CLI defaults)")
+	}
+
+	// Add skills if specified
+	if t.options != nil && t.options.Skills != nil {
+		switch v := t.options.Skills.(type) {
+		case string:
+			if v == "all" {
+				args = append(args, "--skills", "all")
+				t.logger.Debug("Enabling all skills")
+			}
+		case []string:
+			if len(v) > 0 {
+				args = append(args, "--skills", joinStrings(v, ","))
+				t.logger.Debug("Setting skills: %s", joinStrings(v, ","))
+			}
+		}
+	}
+
 	// Note: Agents are sent via the initialize control protocol, not CLI flags
 
 	// Add subagent execution configuration if specified
