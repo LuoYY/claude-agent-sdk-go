@@ -173,7 +173,7 @@ func Gain(ctx context.Context, opts ...GainOption) (*GainExport, error) {
 		args = append(args, "--project", cfg.project)
 	}
 
-	cmd := exec.CommandContext(ctx, cfg.binary, args...)
+	cmd := exec.CommandContext(ctx, cfg.binary, args...) // #nosec G204 -- cfg.binary is caller-controlled, not user input
 	if len(cfg.env) > 0 {
 		cmd.Env = append(os.Environ(), cfg.env...)
 	}
@@ -236,9 +236,9 @@ func (e *GainError) Unwrap() error { return e.Err }
 // which stores the SQLite file as "history.db" (verified against
 // rtk 0.37.1 on Linux at ~/.local/share/rtk/history.db).
 //
-//   macOS:   $HOME/Library/Application Support/rtk/history.db
-//   Linux:   $XDG_DATA_HOME/rtk/history.db   (falls back to $HOME/.local/share/rtk/history.db)
-//   Windows: %APPDATA%/rtk/history.db
+//	macOS:   $HOME/Library/Application Support/rtk/history.db
+//	Linux:   $XDG_DATA_HOME/rtk/history.db   (falls back to $HOME/.local/share/rtk/history.db)
+//	Windows: %APPDATA%/rtk/history.db
 //
 // Returns an empty string and an error if the home directory cannot
 // be resolved.
