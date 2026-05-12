@@ -464,12 +464,12 @@ func TestParseMessage_InvalidJSON(t *testing.T) {
 		{
 			name:    "missing type field",
 			input:   invalidJSONMissingType,
-			wantErr: true,
+			wantErr: false, // Forward compatibility: falls back to SystemMessage
 		},
 		{
 			name:    "unknown message type",
 			input:   invalidJSONUnknownType,
-			wantErr: true,
+			wantErr: false, // Forward compatibility: falls back to SystemMessage
 		},
 		{
 			name:    "empty bytes",
@@ -479,7 +479,7 @@ func TestParseMessage_InvalidJSON(t *testing.T) {
 		{
 			name:    "null type field",
 			input:   invalidJSONNullType,
-			wantErr: true,
+			wantErr: false, // Forward compatibility: falls back to SystemMessage
 		},
 		{
 			name:    "number type field",
