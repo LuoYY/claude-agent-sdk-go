@@ -164,6 +164,18 @@ func (q *Query) Initialize(ctx context.Context) (map[string]interface{}, error) 
 			if agent.MaxTurns != nil {
 				agentDef["max_turns"] = *agent.MaxTurns
 			}
+			if agent.InitialPrompt != nil {
+				agentDef["initialPrompt"] = *agent.InitialPrompt
+			}
+			if agent.Background != nil {
+				agentDef["background"] = *agent.Background
+			}
+			if agent.Effort != nil {
+				agentDef["effort"] = string(*agent.Effort)
+			}
+			if agent.PermissionMode != nil {
+				agentDef["permissionMode"] = string(*agent.PermissionMode)
+			}
 			agentsMap[name] = agentDef
 		}
 		request["agents"] = agentsMap

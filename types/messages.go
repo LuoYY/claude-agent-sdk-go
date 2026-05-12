@@ -81,6 +81,53 @@ func (t *ToolResultBlock) GetType() string {
 
 func (t *ToolResultBlock) isContentBlock() {}
 
+// ServerToolName constants for known server-side tool names.
+const (
+	ServerToolNameAdvisor       = "advisor"
+	ServerToolNameWebSearch     = "web_search"
+	ServerToolNameWebFetch      = "web_fetch"
+	ServerToolNameCodeExecution = "code_execution"
+)
+
+// ServerToolUseBlock represents a server-side tool use request.
+// These are tools that execute on the server (e.g., web_search, web_fetch, advisor).
+type ServerToolUseBlock struct {
+	Type  string                 `json:"type"` // "server_tool_use"
+	ID    string                 `json:"id"`
+	Name  string                 `json:"name"` // e.g., "web_search", "web_fetch", "advisor"
+	Input map[string]interface{} `json:"input"`
+}
+
+// GetType returns the type of the content block.
+func (t *ServerToolUseBlock) GetType() string {
+	return t.Type
+}
+
+func (t *ServerToolUseBlock) isContentBlock() {}
+
+// ServerToolResultBlock represents the result of a server-side tool execution.
+type ServerToolResultBlock struct {
+	Type      string      `json:"type"` // "server_tool_result"
+	ToolUseID string      `json:"tool_use_id"`
+	Content   interface{} `json:"content,omitempty"` // Can be string or structured content
+}
+
+// GetType returns the type of the content block.
+func (t *ServerToolResultBlock) GetType() string {
+	return t.Type
+}
+
+func (t *ServerToolResultBlock) isContentBlock() {}
+
+// DeferredToolUse represents a tool use that has been deferred by a PreToolUse hook.
+// When a PreToolUse hook returns "defer", the tool invocation is paused and a
+// DeferredToolUse is emitted so the caller can decide how to proceed.
+type DeferredToolUse struct {
+	ID    string                 `json:"id"`
+	Name  string                 `json:"name"`
+	Input map[string]interface{} `json:"input"`
+}
+
 // UnmarshalContentBlock unmarshals a JSON content block into the appropriate type.
 func UnmarshalContentBlock(data []byte) (ContentBlock, error) {
 	var typeCheck struct {
@@ -115,7 +162,21 @@ func UnmarshalContentBlock(data []byte) (ContentBlock, error) {
 			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal tool_result block", string(data), err)
 		}
 		return &block, nil
+	case "server_tool_use":
+		var block ServerToolUseBlock
+		if err := json.Unmarshal(data, &block); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal server_tool_use block", string(data), err)
+		}
+		return &block, nil
+	case "server_tool_result":
+		var block ServerToolResultBlock
+		if err := json.Unmarshal(data, &block); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal server_tool_result block", string(data), err)
+		}
+		return &block, nil
 	default:
+		// Forward compatibility: return unknown content blocks as raw maps
+		// rather than erroring, to handle new block types from future CLI versions
 		return nil, NewMessageParseErrorWithType("unknown content block type", typeCheck.Type)
 	}
 }
@@ -356,6 +417,131 @@ func (m *SystemMessage) ShouldDisplayToUser() bool {
 	return m.Subtype != SystemSubtypeInit && m.Subtype != SystemSubtypeDebug
 }
 
+// TaskNotificationStatus constants for task notification statuses.
+const (
+	TaskNotificationStatusCompleted = "completed"
+	TaskNotificationStatusFailed    = "failed"
+	TaskNotificationStatusStopped   = "stopped"
+)
+
+// TaskUsage represents usage statistics for a task.
+type TaskUsage struct {
+	TotalTokens int `json:"total_tokens"`
+	ToolUses    int `json:"tool_uses"`
+	DurationMs  int `json:"duration_ms"`
+}
+
+// TaskBudget represents the API-side task budget in tokens.
+type TaskBudget struct {
+	MaxTokens  int     `json:"max_tokens"`
+	MaxCostUSD float64 `json:"max_cost_usd,omitempty"`
+}
+
+// TaskStartedMessage is emitted when a task starts execution.
+type TaskStartedMessage struct {
+	Type      string `json:"type"` // "task_started"
+	TaskID    string `json:"task_id"`
+	SessionID string `json:"session_id,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *TaskStartedMessage) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns false for task started messages (internal).
+func (m *TaskStartedMessage) ShouldDisplayToUser() bool {
+	return false
+}
+
+func (m *TaskStartedMessage) isMessage() {}
+
+// TaskProgressMessage is emitted while a task is in progress.
+type TaskProgressMessage struct {
+	Type      string                 `json:"type"` // "task_progress"
+	TaskID    string                 `json:"task_id"`
+	SessionID string                 `json:"session_id,omitempty"`
+	Data      map[string]interface{} `json:"data,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *TaskProgressMessage) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns false for task progress messages (internal).
+func (m *TaskProgressMessage) ShouldDisplayToUser() bool {
+	return false
+}
+
+func (m *TaskProgressMessage) isMessage() {}
+
+// TaskNotificationMessage is emitted when a task completes, fails, or is stopped.
+type TaskNotificationMessage struct {
+	Type      string                 `json:"type"` // "task_notification"
+	TaskID    string                 `json:"task_id"`
+	Status    string                 `json:"status"` // "completed", "failed", "stopped"
+	SessionID string                 `json:"session_id,omitempty"`
+	Usage     *TaskUsage             `json:"usage,omitempty"`
+	Error     *string                `json:"error,omitempty"`
+	Data      map[string]interface{} `json:"data,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *TaskNotificationMessage) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns true for task notification messages.
+func (m *TaskNotificationMessage) ShouldDisplayToUser() bool {
+	return true
+}
+
+func (m *TaskNotificationMessage) isMessage() {}
+
+// HookEventMessage is emitted when include_hook_events is enabled.
+// It provides visibility into hook lifecycle events during execution.
+type HookEventMessage struct {
+	Type      string                 `json:"type"` // "hook_event"
+	Event     string                 `json:"event"`
+	HookName  string                 `json:"hook_name,omitempty"`
+	Data      map[string]interface{} `json:"data,omitempty"`
+	SessionID string                 `json:"session_id,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *HookEventMessage) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns false for hook event messages (diagnostic).
+func (m *HookEventMessage) ShouldDisplayToUser() bool {
+	return false
+}
+
+func (m *HookEventMessage) isMessage() {}
+
+// MirrorErrorMessage is emitted when a SessionStore.Append() call fails.
+// This allows the caller to detect transcript mirroring failures.
+type MirrorErrorMessage struct {
+	Type    string      `json:"type"` // "mirror_error"
+	Key     interface{} `json:"key,omitempty"`
+	Error   string      `json:"error"`
+	Message string      `json:"message,omitempty"`
+}
+
+// GetMessageType returns the type of the message.
+func (m *MirrorErrorMessage) GetMessageType() string {
+	return m.Type
+}
+
+// ShouldDisplayToUser returns true for mirror error messages (indicates data loss).
+func (m *MirrorErrorMessage) ShouldDisplayToUser() bool {
+	return true
+}
+
+func (m *MirrorErrorMessage) isMessage() {}
+
 // ResultMessage represents a result message with cost and usage information.
 type ResultMessage struct {
 	Type              string                 `json:"type"`
@@ -507,7 +693,43 @@ func UnmarshalMessage(data []byte) (Message, error) {
 			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal rate limit event", string(data), err)
 		}
 		return &msg, nil
+	case "task_started":
+		var msg TaskStartedMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task started message", string(data), err)
+		}
+		return &msg, nil
+	case "task_progress":
+		var msg TaskProgressMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task progress message", string(data), err)
+		}
+		return &msg, nil
+	case "task_notification":
+		var msg TaskNotificationMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal task notification message", string(data), err)
+		}
+		return &msg, nil
+	case "hook_event":
+		var msg HookEventMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal hook event message", string(data), err)
+		}
+		return &msg, nil
+	case "mirror_error":
+		var msg MirrorErrorMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal mirror error message", string(data), err)
+		}
+		return &msg, nil
 	default:
-		return nil, NewMessageParseErrorWithType("unknown message type", typeCheck.Type)
+		// Forward compatibility: skip unknown message types from future CLI versions
+		// rather than returning an error. Return a SystemMessage with the raw type.
+		var msg SystemMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return nil, NewJSONDecodeErrorWithCause("failed to unmarshal unknown message type", string(data), err)
+		}
+		return &msg, nil
 	}
 }

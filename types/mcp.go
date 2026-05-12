@@ -9,6 +9,15 @@ import (
 // It receives the context and tool arguments, and returns the tool result or an error.
 type ToolHandler func(ctx context.Context, args map[string]any) (any, error)
 
+// ToolAnnotations provides metadata about a tool's behavior and side effects.
+// These annotations help Claude understand when and how to use tools.
+type ToolAnnotations struct {
+	ReadOnly           *bool `json:"readOnly,omitempty"`           // Tool only reads data (no side effects)
+	Destructive        *bool `json:"destructive,omitempty"`        // Tool may cause irreversible changes
+	OpenWorld          *bool `json:"openWorld,omitempty"`          // Tool interacts with external systems
+	MaxResultSizeChars *int  `json:"maxResultSizeChars,omitempty"` // Maximum result size before spilling to storage
+}
+
 // Tool represents an MCP tool that can be called by Claude.
 // This is used with the MCP server factory to simplify tool registration.
 type Tool struct {
@@ -33,6 +42,10 @@ type Tool struct {
 	//    "required": []string{"name"},
 	//  }
 	InputSchema map[string]interface{}
+
+	// Annotations provides metadata about the tool's behavior (readOnly, destructive, openWorld).
+	// These help Claude understand the tool's side effects and usage constraints.
+	Annotations *ToolAnnotations
 
 	// Handler is the function that executes when Claude calls this tool.
 	// It receives the tool arguments and should return either:
@@ -108,6 +121,10 @@ func (s *SDKMCPServer) handleListTools(message map[string]interface{}) (map[stri
 
 		if tool.InputSchema != nil {
 			toolMap["inputSchema"] = tool.InputSchema
+		}
+
+		if tool.Annotations != nil {
+			toolMap["annotations"] = tool.Annotations
 		}
 
 		tools = append(tools, toolMap)
@@ -240,6 +257,37 @@ func formatMapAsJSON(m map[string]interface{}) string {
 // marshalToJSON is a simple JSON marshaling helper.
 func marshalToJSON(v interface{}) ([]byte, error) {
 	return json.Marshal(v)
+}
+
+// McpServerConnectionStatus represents the connection state of an MCP server.
+type McpServerConnectionStatus string
+
+const (
+	McpConnectionConnected    McpServerConnectionStatus = "connected"
+	McpConnectionDisconnected McpServerConnectionStatus = "disconnected"
+	McpConnectionConnecting   McpServerConnectionStatus = "connecting"
+	McpConnectionError        McpServerConnectionStatus = "error"
+)
+
+// McpToolInfo represents information about a tool provided by an MCP server.
+type McpToolInfo struct {
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Annotations *ToolAnnotations `json:"annotations,omitempty"`
+}
+
+// McpServerInfo represents detailed information about an MCP server.
+type McpServerInfo struct {
+	Name   string                    `json:"name"`
+	Status McpServerConnectionStatus `json:"status"`
+	Tools  []McpToolInfo             `json:"tools,omitempty"`
+	Error  *string                   `json:"error,omitempty"`
+	Config map[string]interface{}    `json:"config,omitempty"`
+}
+
+// McpStatusResponse represents the typed response from GetMcpStatus.
+type McpStatusResponse struct {
+	Servers []McpServerInfo `json:"servers"`
 }
 
 // NewSDKMCPServer creates a new MCP server with the given name and tools.
