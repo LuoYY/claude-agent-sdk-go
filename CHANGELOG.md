@@ -2,6 +2,59 @@
 
 All notable changes to the Claude Agent SDK for Go are documented in this file.
 
+## [0.9.0] - 2026-05-14
+
+### Added — Python SDK Parity
+
+#### SessionStore & Session Management
+- `SessionStore` interface and `InMemorySessionStore` for transcript persistence
+- Session management functions: `ListSessions`, `GetSessionInfo`, `GetSessionMessages`,
+  `ListSubagents`, `GetSubagentMessages`, `RenameSession`, `TagSession`, `DeleteSession`, `ForkSession`
+- `ProjectKeyForDirectory` helper for deriving project keys from paths
+- `SessionStoreFlushMode` (batched/eager) for controlling write timing
+- `WithSessionStore()` and `WithSessionStoreFlush()` builder methods
+
+#### New Message & Content Block Types
+- `TaskStartedMessage`, `TaskProgressMessage`, `TaskNotificationMessage` for task lifecycle
+- `HookEventMessage` for hook lifecycle debugging
+- `MirrorErrorMessage` for session store error reporting
+- `ServerToolUseBlock` and `ServerToolResultBlock` content blocks
+- `TaskUsage`, `TaskBudget` structs for token-aware execution
+
+#### MCP Typed Status Structs
+- `McpServerConnectionStatus` type with constants (connected, disconnected, connecting, error)
+- `McpServerInfo`, `McpToolInfo`, `McpStatusResponse` typed structs
+- `ToolAnnotations` (ReadOnly, Destructive, OpenWorld, MaxResultSizeChars) on `Tool`
+- Annotations included in `handleListTools` tool listing
+
+#### Public Interfaces & Constants
+- Public `Transport` interface in `types` package for custom transports and test mocking
+- Public `Version` constant (`"0.9.0"`) and `MinimumCLIVersion` in root package
+- `ClaudeSDKError` base error type with `Is()`, `Unwrap()`, and `IsClaudeSDKError()` helper
+
+#### Forward Compatibility
+- `UnmarshalMessage` now falls back to `SystemMessage` for unknown message types
+  instead of returning an error, matching Python SDK behavior
+
+#### Expanded Options
+- `ThinkingDisplay` type (`"summarized"`, `"omitted"`) and `Display` field on `ThinkingConfig`
+- `SandboxNetworkConfig` (AllowedDomains, DeniedDomains, AllowUnixSockets, proxy ports, etc.)
+- `SandboxIgnoreViolations` (Files, Network)
+- Expanded `SandboxSettings` with Enabled, AutoAllowBashIfSandboxed, ExcludedCommands, Network, IgnoreViolations
+- `SystemPromptPreset.ExcludeDynamicSections` for cross-user prompt caching
+- `EffortXHigh` effort level
+- `PermissionModeAuto` permission mode
+- `TaskBudget`, `Skills`, `IncludeHookEvents`, `StrictMcpConfig` fields on `ClaudeAgentOptions`
+- `AgentDefinition` fields: `InitialPrompt`, `Background`, `Effort`, `PermissionMode`
+- Builder methods: `WithTaskBudget`, `WithSkills`, `WithIncludeHookEvents`, `WithStrictMcpConfig`, `WithThinkingDisplay`
+- CLI flag support: `--include-hook-events`, `--strict-mcp-config`, `--skills`
+- Agent definition fields wired through control protocol `initialize`
+
+### Fixed
+- gofmt comment formatting in `middleware/rtk/stats.go`
+- gosec G204 warning in `middleware/rtk/stats.go` (added `#nosec` annotation)
+- Updated `TestParseMessage_InvalidJSON` for forward-compatible message parsing
+
 ## [0.8.2] - 2026-04-19
 
 ### Fixed
