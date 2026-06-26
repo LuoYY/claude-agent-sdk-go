@@ -194,7 +194,7 @@ type UserMessage struct {
 	Content         interface{}            `json:"content"` // Can be string or []ContentBlock
 	ParentToolUseID *string                `json:"parent_tool_use_id,omitempty"`
 	UUID            *string                `json:"uuid,omitempty"`
-	ToolUseResult   map[string]interface{} `json:"tool_use_result,omitempty"`
+	ToolUseResult   interface{} `json:"tool_use_result,omitempty"` // Accept string or map from CLI
 }
 
 // GetMessageType returns the type of the message.
